@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(MyApp());
 }
 
@@ -14,7 +18,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Frame 1: Title Screen
 class TitleScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -43,19 +46,10 @@ class TitleScreen extends StatelessWidget {
               'World Wide News',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
             ),
-            SizedBox(height: 10),
-            Text(
-              'Unlock a world of news insights tailored just for you!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w300),
-            ),
             SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
                 minimumSize: Size(200, 50),
               ),
               onPressed: () {
@@ -71,9 +65,6 @@ class TitleScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 side: BorderSide(color: Colors.red),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
                 minimumSize: Size(200, 50),
               ),
               onPressed: () {
@@ -91,31 +82,41 @@ class TitleScreen extends StatelessWidget {
   }
 }
 
-// Frame 2: Sign In Screen
-class SignInScreen extends StatelessWidget {
+class SignInScreen extends StatefulWidget {
+  @override
+  _SignInScreenState createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  Future<void> _signIn() async {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign In Successful!")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign In Failed: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Sign In'),
-        backgroundColor: Colors.red,
-      ),
+      appBar: AppBar(title: Text('Sign In'), backgroundColor: Colors.red),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(
-              'Welcome Again!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text('By signing in, you agree to our privacy policy and Terms of Service.'),
-            SizedBox(height: 20),
             TextField(
+              controller: _emailController,
               decoration: InputDecoration(
                 labelText: 'E-mail',
                 border: OutlineInputBorder(),
@@ -123,97 +124,72 @@ class SignInScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             TextField(
+              controller: _passwordController,
+              obscureText: true,
               decoration: InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
-                suffixIcon: Icon(Icons.visibility_off),
-              ),
-              obscureText: true,
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {},
-                child: Text('Forgot Password?'),
               ),
             ),
+            SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 minimumSize: Size(double.infinity, 50),
               ),
-              onPressed: () {},
+              onPressed: _signIn,
               child: Text('SIGN IN'),
-            ),
-            SizedBox(height: 10),
-            Divider(),
-            Column(
-              children: [
-                _socialButton('Sign in with Google', Colors.red),
-                SizedBox(height: 10),
-                _socialButton('Sign in with Facebook', Colors.blue),
-                SizedBox(height: 10),
-                _socialButton('Sign in with Apple', Colors.black),
-              ],
-            ),
-            Spacer(),
-            Text("Don't have an account?"),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SignUpScreen()),
-                );
-              },
-              child: Text(
-                'Create New Account',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _socialButton(String name, Color color) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        minimumSize: Size(double.infinity, 50),
-      ),
-      onPressed: () {},
-      icon: Icon(Icons.alternate_email),
-      label: Text(name),
     );
   }
 }
 
-// Frame 3: Sign Up Screen
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
+  @override
+  _SignUpScreenState createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  Future<void> _signUp() async {
+    if (_passwordController.text.trim() !=
+        _confirmPasswordController.text.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign Up Successful!")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign Up Failed: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Sign Up'),
-        backgroundColor: Colors.red,
-      ),
+      appBar: AppBar(title: Text('Sign Up'), backgroundColor: Colors.red),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(
-              'New to Here?',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text('By signing up, you agree to our privacy policy and Terms of Service.'),
-            SizedBox(height: 20),
             TextField(
+              controller: _emailController,
               decoration: InputDecoration(
                 labelText: 'E-mail',
                 border: OutlineInputBorder(),
@@ -221,75 +197,34 @@ class SignUpScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             TextField(
+              controller: _passwordController,
+              obscureText: true,
               decoration: InputDecoration(
                 labelText: 'Password',
                 border: OutlineInputBorder(),
-                suffixIcon: Icon(Icons.visibility_off),
               ),
-              obscureText: true,
             ),
             SizedBox(height: 10),
             TextField(
+              controller: _confirmPasswordController,
+              obscureText: true,
               decoration: InputDecoration(
                 labelText: 'Confirm Password',
                 border: OutlineInputBorder(),
-                suffixIcon: Icon(Icons.visibility_off),
               ),
-              obscureText: true,
             ),
-            CheckboxListTile(
-              title: Text('Remember me'),
-              value: true,
-              onChanged: (bool? value) {},
-            ),
+            SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 minimumSize: Size(double.infinity, 50),
               ),
-              onPressed: () {},
+              onPressed: _signUp,
               child: Text('SIGN UP'),
-            ),
-            SizedBox(height: 10),
-            Divider(),
-            Column(
-              children: [
-                _socialButton('Sign up with Google', Colors.red),
-                SizedBox(height: 10),
-                _socialButton('Sign up with Facebook', Colors.blue),
-                SizedBox(height: 10),
-                _socialButton('Sign up with Apple', Colors.black),
-              ],
-            ),
-            Spacer(),
-            Text("Already have an account?"),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SignInScreen()),
-                );
-              },
-              child: Text(
-                'Sign In',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _socialButton(String name, Color color) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        minimumSize: Size(double.infinity, 50),
-      ),
-      onPressed: () {},
-      icon: Icon(Icons.alternate_email),
-      label: Text(name),
     );
   }
 }
