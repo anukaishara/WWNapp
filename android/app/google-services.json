@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "7708603750",
+    "project_id": "wwnapp-e8f99",
+    "storage_bucket": "wwnapp-e8f99.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:7708603750:android:134240a5a2e730ec07c4a7",
+        "android_client_info": {
+          "package_name": "com.example.wwn_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "7708603750-o6l48vth75ds6ihn1fn4215rmijieb26.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmY2lfnls8ksq5pzLoJpQdhoU9dn7rG2s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "7708603750-o6l48vth75ds6ihn1fn4215rmijieb26.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "7708603750-npmp7bslhibb1132pdoh8eicqjilj42n.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.wwnApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
