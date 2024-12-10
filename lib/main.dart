@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'firebase_service.dart';
 import 'screens/title_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseService.initialize(); // Initialize Firebase
   runApp(const MyApp());
 }
 
