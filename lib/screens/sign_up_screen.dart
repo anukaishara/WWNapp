@@ -1,8 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'sign_in_screen.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  _SignUpScreenState createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  Future<void> _signUp() async {
+    if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Sign Up Successful!")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign Up Failed: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,29 +108,32 @@ class SignUpScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 16), // Add space before email area
-                    const TextField(
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
                         labelText: 'E-mail',
                         border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const TextField(
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
                         labelText: 'Password',
                         border: OutlineInputBorder(),
                         suffixIcon: Icon(Icons.visibility_off),
                       ),
-                      obscureText: true,
                     ),
                     const SizedBox(height: 10),
-                    const TextField(
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
                         labelText: 'Confirm Password',
                         border: OutlineInputBorder(),
                         suffixIcon: Icon(Icons.visibility_off),
                       ),
-                      obscureText: true,
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -112,7 +147,7 @@ class SignUpScreen extends StatelessWidget {
                         backgroundColor: const Color.fromARGB(255, 203, 55, 45),
                         minimumSize: const Size(double.infinity, 50),
                       ),
-                      onPressed: () {},
+                      onPressed: _signUp,
                       child: const Text(
                         'SIGN UP',
                         style: TextStyle(

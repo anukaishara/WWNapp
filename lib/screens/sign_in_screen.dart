@@ -1,8 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'sign_up_screen.dart';
 
-class SignInScreen extends StatelessWidget {
+class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
+
+  @override
+  _SignInScreenState createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  Future<void> _signIn() async {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Sign In Successful!")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Sign In Failed: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,20 +100,22 @@ class SignInScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 16), // Add space before email area
-                  const TextField(
-                    decoration: InputDecoration(
+                  TextField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
                       labelText: 'E-mail',
                       border: OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const TextField(
-                    decoration: InputDecoration(
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(),
                       suffixIcon: Icon(Icons.visibility_off),
                     ),
-                    obscureText: true,
                   ),
                   Align(
                     alignment: Alignment.centerRight,
@@ -102,7 +129,7 @@ class SignInScreen extends StatelessWidget {
                       backgroundColor: const Color.fromARGB(255, 203, 55, 45),
                       minimumSize: const Size(double.infinity, 50),
                     ),
-                    onPressed: () {},
+                    onPressed: _signIn,
                     child: const Text(
                       'SIGN IN',
                       style: TextStyle(
@@ -123,7 +150,7 @@ class SignInScreen extends StatelessWidget {
                         label: const Text('Sign in with Google'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                          side: const BorderSide(color:  Color.fromARGB(255, 216, 215, 215)),
+                          side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
                           foregroundColor: const Color.fromARGB(255, 0, 0, 0),
                           minimumSize: const Size(double.infinity, 50), // Set width to double.infinity
                         ),
@@ -162,7 +189,7 @@ class SignInScreen extends StatelessWidget {
                   const Text(
                     "Don't have an account?",
                     textAlign: TextAlign.center,
-                    style:TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   TextButton(
                     onPressed: () {
