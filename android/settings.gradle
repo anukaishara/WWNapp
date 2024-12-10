@@ -1,9 +1,5 @@
-import java.util.Properties
-
-
 pluginManagement {
     def flutterSdkPath = {
-
         def properties = new Properties()
         file("local.properties").withInputStream { properties.load(it) }
         def flutterSdkPath = properties.getProperty("flutter.sdk")
