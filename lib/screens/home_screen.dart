@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'profile_screen.dart'; // Ensure this path is correct based on your project structure
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // Track the selected category
+  String _selectedCategory = "For you";
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +35,13 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.person, color: Colors.white), // Profile icon
             onPressed: () {
-              // Handle profile action
+              // Navigate to ProfileScreen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfileScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -34,6 +49,10 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            Container(
+              height: 10, // White ribbon height
+              color: Colors.white, // White ribbon color
+            ),
             const SizedBox(height: 8),
             _buildCategoryFilters(), // Horizontal category filters
             Expanded(
@@ -61,37 +80,48 @@ class HomeScreen extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Wrap(
-        spacing: 8.0,
-        runSpacing: 8.0,
-        children: categories
-            .map((category) => ElevatedButton(
-                  onPressed: () {
-                    // Handle button click
-                    print('$category clicked');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: category == "For you"
-                        ? Colors.white
-                        : Colors.red, // White for selected, red for others
-                    foregroundColor: category == "For you"
+      child: SizedBox(
+        height: 40.0, // Set a fixed height for the slider
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            final category = categories[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    // Update the selected category when a button is pressed
+                    _selectedCategory = category;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _selectedCategory == category
+                      ? Colors.white
+                      : Colors.red, // White for selected, red for others
+                  foregroundColor: _selectedCategory == category
+                      ? Colors.black
+                      : Colors.white, // Black text for selected, white for others
+                  side: BorderSide(
+                    color: _selectedCategory == category
                         ? Colors.black
-                        : Colors.white, // Black text for selected, white for others
-                    side: BorderSide(
-                      color: category == "For you" ? Colors.black : Colors.red,
-                      width: 1.0,
-                    ), // Black border for "For you"
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8.0,
-                    ),
+                        : Colors.red,
+                    width: 1.0,
+                  ), // Black border for selected
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(category),
-                ))
-            .toList(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                ),
+                child: Text(category),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -106,28 +136,35 @@ class HomeScreen extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Placeholder for image
                 Container(
-                  height: 150, // Height for the image
-                  width: double.infinity, // Full width
+                  height: 80, // Height for the image
+                  width: 80, // Width for the image
                   color: Colors.grey[300], // Blank grey space
                 ),
-                const SizedBox(height: 16), // Space between image and text
-                // Placeholder for title
-                Container(
-                  height: 20,
-                  width: 200,
-                  color: Colors.grey[300], // Blank grey space
-                ),
-                const SizedBox(height: 8),
-                // Placeholder for description
-                Container(
-                  height: 16,
-                  width: 150,
-                  color: Colors.grey[300], // Blank grey space
+                const SizedBox(width: 16), // Space between image and text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Placeholder for title
+                      Container(
+                        height: 20,
+                        width: double.infinity,
+                        color: Colors.grey[300], // Blank grey space
+                      ),
+                      const SizedBox(height: 8),
+                      // Placeholder for description
+                      Container(
+                        height: 16,
+                        width: 150,
+                        color: Colors.grey[300], // Blank grey space
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
