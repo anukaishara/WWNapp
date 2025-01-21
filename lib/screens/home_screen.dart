@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'profile_screen.dart'; // Ensure this path is correct based on your project structure
+import '../Services/api_service.dart'; // Import the ApiService
+import 'profile_screen.dart'; // Import the ProfileScreen
+import 'article_screen.dart'; // Import the ArticleScreen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,6 +13,89 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // Track the selected category
   String _selectedCategory = "For you";
+
+  // Store fetched news articles
+  List<dynamic> newsArticles = [];
+
+  // Cache news articles for each category
+  final Map<String, List<dynamic>> cachedNews = {};
+
+  // Track loading state
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch news when the screen is first loaded
+    _fetchNews(_selectedCategory);
+  }
+
+  // Fetch news from the API based on the selected category
+  Future<void> _fetchNews(String category) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    // Map categories to relevant queries
+    final categoryToQuery = {
+      "For you": "", // Empty query for "For you"
+      "Top": "news", // General news for "Top"
+      "Sports": "sports",
+      "Business": "business",
+      "History": "history",
+      "Technology": "technology",
+      "Others": "world",
+    };
+
+    try {
+      if (category == "All") {
+        // Combine news from all categories except "For you" and "All"
+        final allArticles = <dynamic>[];
+        for (final cat in cachedNews.keys) {
+          if (cat != "For you" && cat != "All") {
+            allArticles.addAll(cachedNews[cat]!);
+          }
+        }
+        setState(() {
+          newsArticles = allArticles;
+        });
+      } else if (category == "For you") {
+        // Keep "For you" tab empty
+        setState(() {
+          newsArticles = [];
+        });
+      } else {
+        // Fetch news for the selected category
+        final query = categoryToQuery[category] ?? 'news';
+        if (cachedNews.containsKey(category)) {
+          // Use cached news if available
+          setState(() {
+            newsArticles = cachedNews[category]!;
+          });
+        } else {
+          // Fetch news from the API
+          final articles = await ApiService.fetchEverythingFromNewsAPI(query: query);
+          cachedNews[category] = articles; // Cache the results
+          setState(() {
+            newsArticles = articles;
+          });
+        }
+      }
+    } catch (e) {
+      // Show error message to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to fetch news: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      print('Error fetching news for category $category: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 8),
             _buildCategoryFilters(), // Horizontal category filters
             Expanded(
-              child: _buildPlaceholderContent(), // Use Expanded for flexible space
+              child: _buildNewsContent(), // Show news for the selected category
             ),
           ],
         ),
@@ -70,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final categories = [
       "For you",
       "All",
-      "News",
+      "Top", // Renamed from "News"
       "Sports",
       "Business",
       "History",
@@ -92,9 +177,11 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    // Update the selected category when a button is pressed
                     _selectedCategory = category;
                   });
+
+                  // Fetch news for the selected category
+                  _fetchNews(category);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _selectedCategory == category
@@ -126,53 +213,113 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Placeholder Content
-  Widget _buildPlaceholderContent() {
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 60), // Ensure padding avoids overlap with BottomNavigationBar
-      itemCount: 5, // Number of placeholder cards
+  // Real News Content for the Selected Category
+Widget _buildNewsContent() {
+  if (isLoading) {
+    return const Center(
+      child: CircularProgressIndicator(), // Show loading indicator
+    );
+  }
+
+  if (newsArticles.isEmpty) {
+    return const Center(
+      child: Text('No news available'), // Show a message if no articles are fetched
+    );
+  }
+
+  return RefreshIndicator(
+    onRefresh: () async {
+      await _fetchNews(_selectedCategory); // Refresh news
+    },
+    child: ListView.builder(
+      padding: const EdgeInsets.only(bottom: 60),
+      itemCount: newsArticles.length,
       itemBuilder: (context, index) {
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Placeholder for image
-                Container(
-                  height: 80, // Height for the image
-                  width: 80, // Width for the image
-                  color: Colors.grey[300], // Blank grey space
-                ),
-                const SizedBox(width: 16), // Space between image and text
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Placeholder for title
-                      Container(
-                        height: 20,
-                        width: double.infinity,
-                        color: Colors.grey[300], // Blank grey space
-                      ),
-                      const SizedBox(height: 8),
-                      // Placeholder for description
-                      Container(
-                        height: 16,
-                        width: 150,
-                        color: Colors.grey[300], // Blank grey space
-                      ),
-                    ],
+        final article = newsArticles[index];
+        return GestureDetector(
+          onTap: () {
+            // Navigate to the ArticleScreen with the selected article
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ArticleScreen(article: article),
+              ),
+            );
+          },
+          child: Card(
+            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // News image (if available)
+                  if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
+                    Image.network(
+                      article['urlToImage'],
+                      height: 80,
+                      width: 80,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) {
+                          return child; // Return the image when fully loaded
+                        }
+                        return Container(
+                          height: 80,
+                          width: 80,
+                          color: Colors.grey[300], // Show a grey placeholder
+                          child: const Center(child: CircularProgressIndicator()),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 80,
+                          width: 80,
+                          color: Colors.grey[300], // Show a grey box for errors
+                          child: const Icon(Icons.error, color: Colors.red),
+                        );
+                      },
+                    )
+                  else
+                    Container(
+                      height: 80,
+                      width: 80,
+                      color: Colors.grey[300], // Show a grey box as a fallback
+                      child: const Icon(Icons.image, color: Colors.white),
+                    ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // News title
+                        Text(
+                          article['title'] ?? 'No Title',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // News description
+                        Text(
+                          article['description'] ?? 'No Description',
+                          style: const TextStyle(
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   // Custom Footer Navigation
   Widget _buildCustomFooter() {

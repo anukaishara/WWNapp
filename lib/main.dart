@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'firebase_service.dart';
+import 'Services/firebase_service.dart';
 import 'screens/title_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +16,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TitleScreen(),
+      home: HomeScreen(),
     );
   }
 }
