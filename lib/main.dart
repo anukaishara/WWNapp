@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'firebase_service.dart';
-import 'screens/title_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'screens/sign_in_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebaseService.initialize(); // Initialize Firebase
+  await Firebase.initializeApp(); // Initialize Firebase
   runApp(const MyApp());
 }
 
@@ -13,9 +13,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TitleScreen(),
+      title: 'Your App Title',
+      theme: ThemeData(
+        primarySwatch: Colors.red,
+      ),
+      home: const SignInScreen(), // Directly open the SignInScreen
     );
   }
 }

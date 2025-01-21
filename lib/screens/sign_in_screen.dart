@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/google_auth_service.dart'; // Import Google Auth Service
 import 'sign_up_screen.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -29,6 +30,21 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    try {
+      final user = await GoogleAuthService().signInWithGoogle();
+      if (user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Signed in as ${user.displayName}")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google Sign-In Failed: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,12 +56,12 @@ class _SignInScreenState extends State<SignInScreen> {
             left: 0,
             right: 0,
             child: Container(
-              height: MediaQuery.of(context).size.height / 2, // 50% of screen height
-              color: const Color.fromARGB(255, 187, 51, 41), // Solid red color
+              height: MediaQuery.of(context).size.height / 2,
+              color: const Color.fromARGB(255, 187, 51, 41),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 50), // Space from the top of the screen
+                  SizedBox(height: 50),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
                     child: Text(
@@ -84,11 +100,11 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
           ),
-          // Text container starting from the middle of the red background
+          // Form container
           Positioned(
-            top: MediaQuery.of(context).size.height / 4, // Start from the middle of the background
-            left: MediaQuery.of(context).size.width * 0.05, // 5% padding on the left
-            right: MediaQuery.of(context).size.width * 0.05, // 5% padding on the right
+            top: MediaQuery.of(context).size.height / 4,
+            left: MediaQuery.of(context).size.width * 0.05,
+            right: MediaQuery.of(context).size.width * 0.05,
             bottom: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -99,7 +115,7 @@ class _SignInScreenState extends State<SignInScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 16), // Add space before email area
+                  const SizedBox(height: 16),
                   TextField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -143,16 +159,14 @@ class _SignInScreenState extends State<SignInScreen> {
                   Column(
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () {
-                          // Handle Google sign in
-                        },
-                        icon: Image.asset('assets/google_icon.png', height: 24), // Replace with your Google icon asset
+                        onPressed: _signInWithGoogle,
+                        icon: Image.asset('assets/google_icon.png', height: 24),
                         label: const Text('Sign in with Google'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color.fromARGB(255, 216, 215, 215),
                           side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
                           foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                          minimumSize: const Size(double.infinity, 50), // Set width to double.infinity
+                          minimumSize: const Size(double.infinity, 50),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -160,13 +174,13 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: () {
                           // Handle Facebook sign in
                         },
-                        icon: Image.asset('assets/facebook_icon.png', height: 24), // Replace with your Facebook icon asset
+                        icon: Image.asset('assets/facebook_icon.png', height: 24),
                         label: const Text('Sign in with Facebook'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color.fromARGB(255, 216, 215, 215),
                           side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
                           foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                          minimumSize: const Size(double.infinity, 50), // Set width to double.infinity
+                          minimumSize: const Size(double.infinity, 50),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -174,13 +188,13 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: () {
                           // Handle Apple sign in
                         },
-                        icon: Image.asset('assets/apple_icon.png', height: 24), // Replace with your Apple icon asset
+                        icon: Image.asset('assets/apple_icon.png', height: 24),
                         label: const Text('Sign in with Apple ID'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color.fromARGB(255, 216, 215, 215),
                           side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
                           foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                          minimumSize: const Size(double.infinity, 50), // Set width to double.infinity
+                          minimumSize: const Size(double.infinity, 50),
                         ),
                       ),
                     ],
