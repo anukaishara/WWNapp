@@ -3,11 +3,18 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class GoogleAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+    ],
+  );
 
   // Sign in with Google
   Future<User?> signInWithGoogle() async {
     try {
+      // Clear any previously signed-in account to always show the account picker
+      await _googleSignIn.signOut();
+
       // Trigger the Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -29,11 +36,5 @@ class GoogleAuthService {
     } catch (e) {
       throw Exception("Google Sign-In failed: $e");
     }
-  }
-
-  // Sign out from Google
-  Future<void> signOutGoogle() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
   }
 }

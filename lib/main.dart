@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'screens/sign_in_screen.dart';
+import 'screens/title_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.red,
       ),
-      home: const SignInScreen(), // Directly open the SignInScreen
+      home: const TitleScreen(), // Start with the TitleScreen
     );
   }
 }
