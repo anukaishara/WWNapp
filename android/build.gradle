@@ -1,7 +1,22 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://maven.aliyun.com/repository/public" }
+        maven { url 'https://maven.facebook.com/facebook' }
+// Example mirror
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.1' // Update as needed
+        classpath 'com.google.gms:google-services:4.3.15' // Firebase integration if used
+    }
+}
+
 allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url "https://maven.aliyun.com/repository/public" } // Example mirror
     }
 }
 
