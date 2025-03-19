@@ -58,46 +58,14 @@ class TitleScreen extends StatelessWidget {
                     TextSpan(
                       children: [
                         TextSpan(
-                          text: 'W',
+                          text: 'World Wide News', // Entire sentence in gray
                           style: TextStyle(
-                            color: Color.fromARGB(255, 202, 27, 14),
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'orld ',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 175, 175, 175),
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'W',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 202, 27, 14),
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'ide ',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 175, 175, 175),
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'N',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 202, 27, 14),
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'ews',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 175, 175, 175),
+                            color: Color.fromARGB(255, 175, 175, 175), // Gray color
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                      ),
                     ),
                   ),
                   const SizedBox(height: 30),
