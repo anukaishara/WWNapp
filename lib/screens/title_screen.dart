@@ -144,7 +144,7 @@ class TitleScreen extends StatelessWidget {
                   // Buttons
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 203, 55, 45),
+                      backgroundColor: const Color.fromRGBO(203, 55, 45, 1),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),

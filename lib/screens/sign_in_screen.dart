@@ -13,9 +13,12 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
+
+  bool _isObscure = true;        // default pw is hidden 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
+  
+  
   // Sign in with Email and Password
   Future<void> _signIn() async {
     try {
@@ -159,11 +162,20 @@ class _SignInScreenState extends State<SignInScreen> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _isObscure,    
+                    decoration: InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.visibility_off),
+                      suffixIcon: IconButton(
+                        icon:Icon(
+                          _isObscure ? Icons.visibility_off: Icons.visibility,  ///toggle icon
+                        ),
+                        onPressed: (){
+                          setState(() {
+                            _isObscure =! _isObscure;
+                          });
+                        },
+                        ),
                     ),
                   ),
                   Align(

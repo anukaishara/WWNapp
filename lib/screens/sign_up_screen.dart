@@ -10,9 +10,12 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  bool _isObscure = true;        // default pw is hidden 
+  bool _isObscure1 = true;        // default pw is hidden
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  
 
   Future<void> _signUp() async {
     if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
@@ -28,7 +31,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Sign Up Successful!")),
+                            
       );
+      Navigator.pushReplacement(
+        context, 
+        MaterialPageRoute(builder:(context)=>const SignInScreen()),
+      );
+
+            
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Sign Up Failed: $e")),
@@ -48,7 +58,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             right: 0,
             child: Container(
               height: MediaQuery.of(context).size.height / 2, // 50% of screen height
-              color: const Color.fromARGB(255, 187, 51, 41), // Solid red color
+              color: const Color.from(alpha: 1, red: 0.714, green: 0.2, blue: 0.165), // Solid red color
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -118,21 +128,39 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 10),
                     TextField(
                       controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: _isObscure,
+                      decoration: InputDecoration(
                         labelText: 'Password',
                         border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.visibility_off),
+                        suffixIcon: IconButton(
+                        icon:Icon(
+                          _isObscure ? Icons.visibility_off: Icons.visibility,  ///toggle icon
+                        ),
+                        onPressed: (){
+                          setState(() {
+                            _isObscure =! _isObscure;
+                          });
+                        },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: _confirmPasswordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: _isObscure1,
+                      decoration: InputDecoration(
                         labelText: 'Confirm Password',
                         border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.visibility_off),
+                        suffixIcon: IconButton(
+                        icon:Icon(
+                          _isObscure1 ? Icons.visibility_off: Icons.visibility,  ///toggle icon
+                        ),
+                        onPressed: (){
+                          setState(() {
+                            _isObscure1 =! _isObscure1;
+                          });
+                        },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -148,6 +176,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         minimumSize: const Size(double.infinity, 50),
                       ),
                       onPressed: _signUp,
+                      
                       child: const Text(
                         'SIGN UP',
                         style: TextStyle(
