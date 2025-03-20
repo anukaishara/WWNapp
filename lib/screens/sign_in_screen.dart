@@ -145,98 +145,99 @@ class _SignInScreenState extends State<SignInScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'E-mail',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.visibility_off),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {},
-                      child: const Text('Forgot Password?'),
-                    ),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 203, 55, 45),
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    onPressed: _signIn,
-                    child: const Text(
-                      'SIGN IN',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'E-mail',
+                        border: OutlineInputBorder(),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 40),
-                  Column(
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _signInWithGoogle,
-                        icon: Image.asset('assets/google_icon.png', height: 24),
-                        label: const Text('Sign in with Google'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                          side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
-                          foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                          minimumSize: const Size(double.infinity, 50),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.visibility_off),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {},
+                        child: const Text('Forgot Password?'),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(255, 203, 55, 45),
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      onPressed: _signIn,
+                      child: const Text(
+                        'SIGN IN',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      ElevatedButton.icon(
-                        onPressed: _signInWithFacebook,
-                        icon: Image.asset('assets/facebook_icon.png', height: 24),
-                        label: const Text('Sign in with Facebook'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                          side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
-                          foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                          minimumSize: const Size(double.infinity, 50),
+                    ),
+                    const SizedBox(height: 40),
+                    Column(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _signInWithGoogle,
+                          icon: Image.asset('assets/google_icon.png', height: 24),
+                          label: const Text('Sign in with Google'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
+                            side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
+                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  const Text(
-                    "Don't have an account?",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      // Navigate to SignUpScreen when button is clicked
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                      );
-                    },
-                    child: const Text(
-                      'Create New Account',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _signInWithFacebook,
+                          icon: Image.asset('assets/facebook_icon.png', height: 24),
+                          label: const Text('Sign in with Facebook'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
+                            side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
+                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Don't have an account?",
                       textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                  ),
-                ],
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'Create New Account',
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
