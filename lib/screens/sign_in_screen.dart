@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/google_auth_service.dart'; // Import Google Auth Service
 import '../services/facebook_auth_service.dart'; // Import Facebook Auth Service
-import 'sign_up_screen.dart'; // Import SignUp Screen
 import 'home_screen.dart'; // Import Home Screen
 
 class SignInScreen extends StatefulWidget {
@@ -15,6 +14,7 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isChecked = false; // Remember Me checkbox state
 
   // Sign in with Email and Password
   Future<void> _signIn() async {
@@ -167,12 +167,23 @@ class _SignInScreenState extends State<SignInScreen> {
                         suffixIcon: Icon(Icons.visibility_off),
                       ),
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        child: const Text('Forgot Password?'),
-                      ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _isChecked,
+                          onChanged: (value) {
+                            setState(() {
+                              _isChecked = value!;
+                            });
+                          },
+                        ),
+                        const Text('Remember me'),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {},
+                          child: const Text('Forgot Password?'),
+                        ),
+                      ],
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -217,25 +228,6 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "Don't have an account?",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                        );
-                      },
-                      child: const Text(
-                        'Create New Account',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -246,3 +238,4 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
+
