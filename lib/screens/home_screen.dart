@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../Services/api_service.dart'; // Import the ApiService
 import 'profile_screen.dart'; // Import the ProfileScreen
 import 'article_screen.dart'; // Import the ArticleScreen
+import 'video_screen.dart'; // Import the videoScreen
+import 'search_screen.dart'; // Import Search Screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Track loading state
   bool isLoading = false;
+
+ 
+
+  
 
   @override
   void initState() {
@@ -146,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildCustomFooter(), // Replace BottomAppBar
+      bottomNavigationBar: _buildCustomFooter(context), // Replace BottomAppBar
     );
   }
 
@@ -322,19 +328,21 @@ Widget _buildNewsContent() {
 }
 
   // Custom Footer Navigation
-  Widget _buildCustomFooter() {
+  Widget _buildCustomFooter(BuildContext context) {
     return BottomNavigationBar(
       backgroundColor: Colors.red, // Red background color
       selectedItemColor: Colors.white, // White for selected item
       unselectedItemColor: Colors.white70, // Light white for unselected items
+      
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
           label: 'Home',
         ),
+        
         BottomNavigationBarItem(
           icon: Icon(Icons.video_library),
-          label: 'Videos',
+          label: 'Videos',          
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.search),
@@ -347,12 +355,25 @@ Widget _buildNewsContent() {
         switch (index) {
           case 0:
             // Stay on Home
+             Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
             break;
           case 1:
-            // Navigate to Videos
+            // Navigate to Videos       
+      
+            Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const VideoScreen()),
+          );
             break;
           case 2:
             // Navigate to Search
+            Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SearchScreen()),
+          );
             break;
         }
       },

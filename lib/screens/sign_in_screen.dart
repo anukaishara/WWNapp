@@ -165,7 +165,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     obscureText: _isObscure,    
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon:Icon(
                           _isObscure ? Icons.visibility_off: Icons.visibility,  ///toggle icon

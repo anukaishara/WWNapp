@@ -12,6 +12,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   bool _isObscure = true;        // default pw is hidden 
   bool _isObscure1 = true;        // default pw is hidden
+  //bool _isChecked = false; 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -33,12 +34,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SnackBar(content: Text("Sign Up Successful!")),
                             
       );
-      Navigator.pushReplacement(
-        context, 
-        MaterialPageRoute(builder:(context)=>const SignInScreen()),
-      );
 
-            
+      Navigator.pushReplacement(
+       context, 
+       MaterialPageRoute(builder:(context)=>const SignInScreen()),
+     );
+
+                 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Sign Up Failed: $e")),
@@ -111,7 +113,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: Color.fromARGB(255, 255, 255, 255),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: Column(
@@ -131,7 +133,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       obscureText: _isObscure,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                         icon:Icon(
                           _isObscure ? Icons.visibility_off: Icons.visibility,  ///toggle icon
@@ -150,7 +152,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       obscureText: _isObscure1,
                       decoration: InputDecoration(
                         labelText: 'Confirm Password',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                         icon:Icon(
                           _isObscure1 ? Icons.visibility_off: Icons.visibility,  ///toggle icon
@@ -163,20 +165,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Checkbox(value: false, onChanged: (value) {}),
-                        const Text('Remember me')
-                      ],
-                    ),
+                    
+                    
+                    //////////////////////////////////////////////
+                     const SizedBox(height: 35), // Add space before sign up button
+                     //////////
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromARGB(255, 203, 55, 45),
                         minimumSize: const Size(double.infinity, 50),
                       ),
                       onPressed: _signUp,
-                      
                       child: const Text(
                         'SIGN UP',
                         style: TextStyle(
