@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/google_auth_service.dart'; // Import Google Auth Service
 import '../services/facebook_auth_service.dart'; // Import Facebook Auth Service
 import 'home_screen.dart'; // Import Home Screen
+import 'forgot_password_screen.dart'; // Import Forgot Password Screen
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -180,7 +181,15 @@ class _SignInScreenState extends State<SignInScreen> {
                         const Text('Remember me'),
                         const Spacer(),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            // Navigate to ForgotPasswordScreen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgotPasswordScreen(),
+                              ),
+                            );
+                          },
                           child: const Text('Forgot Password?'),
                         ),
                       ],
@@ -238,4 +247,3 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
-
