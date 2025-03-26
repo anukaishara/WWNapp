@@ -4,6 +4,7 @@ import 'profile_screen.dart'; // Import the ProfileScreen
 import 'article_screen.dart'; // Import the ArticleScreen
 import 'video_screen.dart'; // Import the videoScreen
 import 'search_screen.dart'; // Import Search Screen
+import 'menu_screen.dart'; // Import Menu Screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -120,6 +121,12 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.menu, color: Colors.white), // Menu icon
           onPressed: () {
             // Handle menu action
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>  MenuScreen(),
+                ),
+              );
           },
         ),
         actions: [
