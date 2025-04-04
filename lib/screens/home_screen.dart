@@ -214,112 +214,192 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Real News Content for the Selected Category
-Widget _buildNewsContent() {
-  if (isLoading) {
-    return const Center(
-      child: CircularProgressIndicator(), // Show loading indicator
-    );
-  }
+  Widget _buildNewsContent() {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(), // Show loading indicator
+      );
+    }
 
-  if (newsArticles.isEmpty) {
-    return const Center(
-      child: Text('No news available'), // Show a message if no articles are fetched
-    );
-  }
+    if (newsArticles.isEmpty) {
+      return const Center(
+        child: Text('No news available'), // Show a message if no articles are fetched
+      );
+    }
 
-  return RefreshIndicator(
-    onRefresh: () async {
-      await _fetchNews(_selectedCategory); // Refresh news
-    },
-    child: ListView.builder(
-      padding: const EdgeInsets.only(bottom: 60),
-      itemCount: newsArticles.length,
-      itemBuilder: (context, index) {
-        final article = newsArticles[index];
-        return GestureDetector(
-          onTap: () {
-            // Navigate to the ArticleScreen with the selected article
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ArticleScreen(article: article),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _fetchNews(_selectedCategory); // Refresh news
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 60),
+        itemCount: newsArticles.length,
+        itemBuilder: (context, index) {
+          final article = newsArticles[index];
+
+          // First article (big card with large image)
+          if (index == 0) {
+            return GestureDetector(
+              onTap: () {
+                // Navigate to the ArticleScreen with the selected article
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ArticleScreen(article: article),
+                  ),
+                );
+              },
+              child: Card(
+                margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0), // Rounded corners
+                ),
+                elevation: 4, // Add shadow
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Large news image (if available)
+                    if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
+                        child: Image.network(
+                          article['urlToImage'],
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) {
+                              return child; // Return the image when fully loaded
+                            }
+                            return Container(
+                              height: 200,
+                              width: double.infinity,
+                              color: Colors.grey[300], // Show a grey placeholder
+                              child: const Center(child: CircularProgressIndicator()),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 200,
+                              width: double.infinity,
+                              color: Colors.grey[300], // Show a grey box for errors
+                              child: const Icon(Icons.error, color: Colors.red),
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        color: Colors.grey[300], // Show a grey box as a fallback
+                        child: const Icon(Icons.image, color: Colors.white),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // News title (larger font for the first article)
+                          Text(
+                            article['title'] ?? 'No Title',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
-          },
-          child: Card(
-            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+          }
+
+          // Remaining articles (smaller cards)
+          return GestureDetector(
+            onTap: () {
+              // Navigate to the ArticleScreen with the selected article
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ArticleScreen(article: article),
+                ),
+              );
+            },
+            child: Card(
+              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0), // Rounded corners
+              ),
+              elevation: 4, // Add shadow
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // News image (if available)
+                  // News image (smaller image for remaining articles)
                   if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
-                    Image.network(
-                      article['urlToImage'],
-                      height: 80,
-                      width: 80,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) {
-                          return child; // Return the image when fully loaded
-                        }
-                        return Container(
-                          height: 80,
-                          width: 80,
-                          color: Colors.grey[300], // Show a grey placeholder
-                          child: const Center(child: CircularProgressIndicator()),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 80,
-                          width: 80,
-                          color: Colors.grey[300], // Show a grey box for errors
-                          child: const Icon(Icons.error, color: Colors.red),
-                        );
-                      },
+                    ClipRRect(
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12.0)),
+                      child: Image.network(
+                        article['urlToImage'],
+                        height: 100,
+                        width: 100,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) {
+                            return child; // Return the image when fully loaded
+                          }
+                          return Container(
+                            height: 100,
+                            width: 100,
+                            color: Colors.grey[300], // Show a grey placeholder
+                            child: const Center(child: CircularProgressIndicator()),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 100,
+                            width: 100,
+                            color: Colors.grey[300], // Show a grey box for errors
+                            child: const Icon(Icons.error, color: Colors.red),
+                          );
+                        },
+                      ),
                     )
                   else
                     Container(
-                      height: 80,
-                      width: 80,
+                      height: 100,
+                      width: 100,
                       color: Colors.grey[300], // Show a grey box as a fallback
                       child: const Icon(Icons.image, color: Colors.white),
                     ),
-                  const SizedBox(width: 16),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // News title
-                        Text(
-                          article['title'] ?? 'No Title',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // News title
+                          Text(
+                            article['title'] ?? 'No Title',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        // News description
-                        Text(
-                          article['description'] ?? 'No Description',
-                          style: const TextStyle(
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
+          );
+        },
+      ),
+    );
+  }
 
   // Custom Footer Navigation
   Widget _buildCustomFooter() {

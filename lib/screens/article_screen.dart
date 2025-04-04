@@ -5,7 +5,7 @@ import 'package:html/parser.dart' as html; // For parsing HTML
 class ArticleScreen extends StatefulWidget {
   final dynamic article;
 
-  const ArticleScreen({Key? key, required this.article}) : super(key: key);
+  const ArticleScreen({super.key, required this.article});
 
   @override
   _ArticleScreenState createState() => _ArticleScreenState();
