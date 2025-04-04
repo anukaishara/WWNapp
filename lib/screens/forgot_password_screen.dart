@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class ForgotPasswordScreen extends StatelessWidget {
+class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
+
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final TextEditingController emailController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false, // Prevents layout shifting when keyboard appears
+      resizeToAvoidBottomInset:
+          false, // Prevents layout shifting when keyboard appears
       body: Stack(
         children: [
           // Red Top Box (Background)
@@ -29,7 +38,8 @@ class ForgotPasswordScreen extends StatelessWidget {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(), // Smooth scrolling
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -74,8 +84,9 @@ class ForgotPasswordScreen extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     // Email Input
-                    const TextField(
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
                         labelText: 'Email Address',
                         border: OutlineInputBorder(),
                       ),
@@ -89,8 +100,30 @@ class ForgotPasswordScreen extends StatelessWidget {
                         backgroundColor: const Color.fromARGB(255, 203, 55, 45),
                         minimumSize: const Size(double.infinity, 50),
                       ),
-                      onPressed: () {
-                        // Reset Password Logic
+                      onPressed: () async {
+                        final email = emailController.text.trim();
+                        if (email.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('Please enter your email address')),
+                          );
+                          return;
+                        }
+
+                        try {
+                          await FirebaseAuth.instance
+                              .sendPasswordResetEmail(email: email);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Password reset link sent to your email!')),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: ${e.toString()}')),
+                          );
+                        }
                       },
                       child: const Text(
                         'Send Reset Link',
