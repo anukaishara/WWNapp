@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -110,17 +111,20 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   // Logout
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Logout',
-                      style: TextStyle(
-                        fontSize: 20, // Font size for box text
-                        color: Colors.black,
+                  GestureDetector(
+                    onTap: () => _showLogoutConfirmation(context), // Trigger logout confirmation
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 20, // Font size for box text
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ),
@@ -130,6 +134,41 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // Show logout confirmation dialog
+  void _showLogoutConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Clear login state using SharedPreferences
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('isLoggedIn', false); // Reset login state
+
+                // Navigate back to the title screen
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              child: const Text(
+                'Logout',
+                style: TextStyle(color: Colors.red), // Highlight logout action in red
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

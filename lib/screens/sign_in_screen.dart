@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/google_auth_service.dart'; // Import Google Auth Service
 import '../services/facebook_auth_service.dart'; // Import Facebook Auth Service
 import 'home_screen.dart'; // Import Home Screen
@@ -15,7 +16,56 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isChecked = false; // Remember Me checkbox state
+  bool _rememberMe = false; // Remember Me checkbox state
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCredentials(); // Load cached credentials when the screen initializes
+    _checkLoginState();
+  }
+
+  // Check login state and redirect if logged in
+  Future<void> _checkLoginState() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (isLoggedIn) {
+      // Navigate directly to Home Screen if user is already logged in
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      });
+    }
+  }
+
+  // Load credentials from cache
+  Future<void> _loadCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _emailController.text = prefs.getString('email') ?? '';
+      _passwordController.text = prefs.getString('password') ?? '';
+      _rememberMe = prefs.getBool('rememberMe') ?? false;
+    });
+  }
+
+
+  // Save login state and credentials based on Remember Me
+  Future<void> _saveLoginState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true); // Always save login state
+    if (_rememberMe) {
+      await prefs.setString('email', _emailController.text.trim());
+      await prefs.setString('password', _passwordController.text.trim());
+      await prefs.setBool('rememberMe', true);
+    } else {
+      await prefs.remove('email');
+      await prefs.remove('password');
+      await prefs.remove('rememberMe');
+    }
+  }
 
   // Sign in with Email and Password
   Future<void> _signIn() async {
@@ -24,6 +74,10 @@ class _SignInScreenState extends State<SignInScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      // Save login state to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      _saveLoginState(); // Save credentials only if Remember Me is checked
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Sign In Successful!")),
       );
@@ -171,14 +225,14 @@ class _SignInScreenState extends State<SignInScreen> {
                     Row(
                       children: [
                         Checkbox(
-                          value: _isChecked,
+                          value: _rememberMe,
                           onChanged: (value) {
                             setState(() {
-                              _isChecked = value!;
+                              _rememberMe = value!;
                             });
                           },
                         ),
-                        const Text('Remember me'),
+                        const Text('Remember Me'),
                         const Spacer(),
                         TextButton(
                           onPressed: () {
@@ -186,7 +240,8 @@ class _SignInScreenState extends State<SignInScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ForgotPasswordScreen(),
+                                builder: (context) =>
+                                    const ForgotPasswordScreen(),
                               ),
                             );
                           },
@@ -214,11 +269,14 @@ class _SignInScreenState extends State<SignInScreen> {
                       children: [
                         ElevatedButton.icon(
                           onPressed: _signInWithGoogle,
-                          icon: Image.asset('assets/google_icon.png', height: 24),
+                          icon:
+                              Image.asset('assets/google_icon.png', height: 24),
                           label: const Text('Sign in with Google'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                            side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
+                            backgroundColor:
+                                const Color.fromARGB(255, 216, 215, 215),
+                            side: const BorderSide(
+                                color: Color.fromARGB(255, 216, 215, 215)),
                             foregroundColor: const Color.fromARGB(255, 0, 0, 0),
                             minimumSize: const Size(double.infinity, 50),
                           ),
@@ -226,11 +284,14 @@ class _SignInScreenState extends State<SignInScreen> {
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           onPressed: _signInWithFacebook,
-                          icon: Image.asset('assets/facebook_icon.png', height: 24),
+                          icon: Image.asset('assets/facebook_icon.png',
+                              height: 24),
                           label: const Text('Sign in with Facebook'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                            side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
+                            backgroundColor:
+                                const Color.fromARGB(255, 216, 215, 215),
+                            side: const BorderSide(
+                                color: Color.fromARGB(255, 216, 215, 215)),
                             foregroundColor: const Color.fromARGB(255, 0, 0, 0),
                             minimumSize: const Size(double.infinity, 50),
                           ),
