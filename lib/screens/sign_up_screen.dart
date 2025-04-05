@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'sign_in_screen.dart'; // Import Sign-In Screen
+import 'otp_verification_screen.dart'; // Import OTP Verification Screen
+import '../services/google_auth_service.dart'; // Import Google Auth Service
+import '../services/facebook_auth_service.dart'; // Import Facebook Auth Service
+import 'home_screen.dart'; // Import Home Screen
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,28 +15,17 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
-  bool _rememberMe = false; // Tracks "Remember Me" checkbox
-  bool _isPasswordVisible = false; // Show/hide password toggle for password field
-  bool _isConfirmPasswordVisible = false; // Show/hide password toggle for confirm password field
-
-  // Save credentials to SharedPreferences for "Remember Me"
-  Future<void> _saveCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_rememberMe) {
-      await prefs.setString('email', _emailController.text.trim());
-      await prefs.setString('password', _passwordController.text.trim());
-      await prefs.setBool('rememberMe', true);
-    } else {
-      await prefs.remove('email');
-      await prefs.remove('password');
-      await prefs.remove('rememberMe');
-    }
-  }
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  bool _isPasswordVisible =
+      false; // Show/hide password toggle for password field
+  bool _isConfirmPasswordVisible =
+      false; // Show/hide password toggle for confirm password field
 
   Future<void> _signUp() async {
     // Check if passwords match
-    if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
+    if (_passwordController.text.trim() !=
+        _confirmPasswordController.text.trim()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Passwords do not match")),
       );
@@ -43,26 +34,69 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       // Create account using Firebase Authentication
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Save credentials for "Remember Me"
-      await _saveCredentials();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text("Sign-Up Successful! Redirecting to OTP Verification...")));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Sign Up Successful!")),
-      );
-
-      // Navigate to Sign-In Screen
+      // Navigate to OTP Verification Screen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const SignInScreen()),
+        MaterialPageRoute(
+          builder: (context) =>
+              OtpVerificationScreen(email: _emailController.text.trim()),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Sign Up Failed: $e")),
+      );
+    }
+  }
+
+  // Google Sign-In Logic
+  Future<void> _signInWithGoogle() async {
+    try {
+      final user = await GoogleAuthService().signInWithGoogle();
+      if (user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Signed in as ${user.displayName}")),
+        );
+        // Navigate to HomeScreen after successful sign-in
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google Sign-In Failed: $e")),
+      );
+    }
+  }
+
+  // Facebook Sign-In Logic
+  Future<void> _signInWithFacebook() async {
+    try {
+      final user = await FacebookAuthService().signInWithFacebook();
+      if (user != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Signed in as ${user.displayName}")),
+        );
+        // Navigate to HomeScreen after successful sign-in
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Facebook Sign-In Failed: $e")),
       );
     }
   }
@@ -72,18 +106,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Red background header
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: Container(
-              height: MediaQuery.of(context).size.height / 2, // 50% of screen height
-              color: const Color.fromARGB(255, 187, 51, 41), // Solid red color
+              height: MediaQuery.of(context).size.height / 2,
+              color: const Color.fromARGB(255, 187, 51, 41),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 50), // Space from the top of the screen
+                  SizedBox(height: 50),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
                     child: Text(
@@ -122,15 +155,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
-          // Text container below the red header
           Positioned(
-            top: MediaQuery.of(context).size.height / 4, // Start from the middle of the background
+            top: MediaQuery.of(context).size.height / 4,
             left: MediaQuery.of(context).size.width * 0.05,
             right: MediaQuery.of(context).size.width * 0.05,
             bottom: 0,
             child: SingleChildScrollView(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -149,13 +182,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 10),
                     TextField(
                       controller: _passwordController,
-                      obscureText: !_isPasswordVisible, // Toggle password visibility
+                      obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
                         labelText: 'Password',
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
@@ -168,36 +203,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 10),
                     TextField(
                       controller: _confirmPasswordController,
-                      obscureText: !_isConfirmPasswordVisible, // Toggle confirm password visibility
+                      obscureText: !_isConfirmPasswordVisible,
                       decoration: InputDecoration(
                         labelText: 'Confirm Password',
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                            _isConfirmPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
-                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                              _isConfirmPasswordVisible =
+                                  !_isConfirmPasswordVisible;
                             });
                           },
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: _rememberMe,
-                          onChanged: (value) {
-                            setState(() {
-                              _rememberMe = value!;
-                            });
-                          },
-                        ),
-                        const Text('Remember Me'),
-                      ],
-                    ),
+                    const SizedBox(height: 10),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromARGB(255, 203, 55, 45),
@@ -213,14 +238,52 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 30),
+                    Column(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _signInWithGoogle,
+                          icon:
+                              Image.asset('assets/google_icon.png', height: 24),
+                          label: const Text('Sign up with Google'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color.fromARGB(255, 216, 215, 215),
+                            side: const BorderSide(
+                                color: Color.fromARGB(255, 216, 215, 215)),
+                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _signInWithFacebook,
+                          icon: Image.asset('assets/facebook_icon.png',
+                              height: 24),
+                          label: const Text('Sign up with Facebook'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color.fromARGB(255, 216, 215, 215),
+                            side: const BorderSide(
+                                color: Color.fromARGB(255, 216, 215, 215)),
+                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                            minimumSize: const Size(double.infinity, 50),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 20),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); // Navigate back to Sign-In Screen
+                        Navigator.pop(
+                            context); // Navigate back to Sign-In Screen
                       },
                       child: const Text(
                         'Already Have an Account?',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16),
                         textAlign: TextAlign.center,
                       ),
                     ),
