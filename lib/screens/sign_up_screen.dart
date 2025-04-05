@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'sign_in_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'sign_in_screen.dart'; // Import Sign-In Screen
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,21 +14,51 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  bool _rememberMe = false; // Tracks "Remember Me" checkbox
+  bool _isPasswordVisible = false; // Show/hide password toggle for password field
+  bool _isConfirmPasswordVisible = false; // Show/hide password toggle for confirm password field
+
+  // Save credentials to SharedPreferences for "Remember Me"
+  Future<void> _saveCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setString('email', _emailController.text.trim());
+      await prefs.setString('password', _passwordController.text.trim());
+      await prefs.setBool('rememberMe', true);
+    } else {
+      await prefs.remove('email');
+      await prefs.remove('password');
+      await prefs.remove('rememberMe');
+    }
+  }
 
   Future<void> _signUp() async {
+    // Check if passwords match
     if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Passwords do not match")),
       );
       return;
     }
+
     try {
+      // Create account using Firebase Authentication
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      // Save credentials for "Remember Me"
+      await _saveCredentials();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Sign Up Successful!")),
+      );
+
+      // Navigate to Sign-In Screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SignInScreen()),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,7 +72,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Red background, taking up half the screen
+          // Red background header
           Positioned(
             top: 0,
             left: 0,
@@ -91,13 +122,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
-          // Text container starting from the middle of the red background
+          // Text container below the red header
           Positioned(
             top: MediaQuery.of(context).size.height / 4, // Start from the middle of the background
-            left: MediaQuery.of(context).size.width * 0.05, // 5% padding on the left
-            right: MediaQuery.of(context).size.width * 0.05, // 5% padding on the right
+            left: MediaQuery.of(context).size.width * 0.05,
+            right: MediaQuery.of(context).size.width * 0.05,
             bottom: 0,
-            child: SingleChildScrollView( // Enable scrolling
+            child: SingleChildScrollView(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: const BoxDecoration(
@@ -107,7 +138,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 16), // Add space before email area
+                    const SizedBox(height: 16),
                     TextField(
                       controller: _emailController,
                       decoration: const InputDecoration(
@@ -118,28 +149,53 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 10),
                     TextField(
                       controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: !_isPasswordVisible, // Toggle password visibility
+                      decoration: InputDecoration(
                         labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.visibility_off),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: _confirmPasswordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: !_isConfirmPasswordVisible, // Toggle confirm password visibility
+                      decoration: InputDecoration(
                         labelText: 'Confirm Password',
-                        border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.visibility_off),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Checkbox(value: false, onChanged: (value) {}),
-                        const Text('Remember me')
+                        Checkbox(
+                          value: _rememberMe,
+                          onChanged: (value) {
+                            setState(() {
+                              _rememberMe = value!;
+                            });
+                          },
+                        ),
+                        const Text('Remember Me'),
                       ],
                     ),
                     ElevatedButton(
@@ -157,59 +213,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 30),
-                    Column(
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Handle Google sign up
-                          },
-                          icon: Image.asset('assets/google_icon.png', height: 24), // Replace with your Google icon asset
-                          label: const Text('Sign up with Google'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                            side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
-                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                            minimumSize: const Size(double.infinity, 50), // Set width to double.infinity
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Handle Facebook sign up
-                          },
-                          icon: Image.asset('assets/facebook_icon.png', height: 24), // Replace with your Facebook icon asset
-                          label: const Text('Sign up with Facebook'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                            side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
-                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                            minimumSize: const Size(double.infinity, 50), // Set width to double.infinity
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Handle Apple sign up
-                          },
-                          icon: Image.asset('assets/apple_icon.png', height: 24), // Replace with your Apple icon asset
-                          label: const Text('Sign up with Apple ID'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
-                            side: const BorderSide(color: Color.fromARGB(255, 216, 215, 215)),
-                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
-                            minimumSize: const Size(double.infinity, 50), // Set width to double.infinity
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20), // Add space before the footer text
+                    const SizedBox(height: 20),
                     TextButton(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SignInScreen()),
-                        );
+                        Navigator.pop(context); // Navigate back to Sign-In Screen
                       },
                       child: const Text(
                         'Already Have an Account?',
