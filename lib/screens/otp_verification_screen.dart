@@ -46,7 +46,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       await send(message, smtpServer);
       print("OTP email successfully sent to $email");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("OTP sent to your email. Please check!")),
+        const SnackBar(content: Text("OTP sent to your email. Please check your inbox and spam/junk folder if you don't see it.")),
       );
     } catch (e) {
       print("Failed to send OTP email: $e");
@@ -66,7 +66,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   void _validateOtp() {
     if (_otpController.text.trim() == _generatedOtp) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("OTP Verified! Redirecting to Home Screen...")),
+        const SnackBar(content: Text("OTP Verified!")),
       );
 
       // Redirect to Home Screen
