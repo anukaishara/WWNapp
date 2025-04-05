@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'home_screen.dart';
+import 'first_login_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email; // Email to which OTP is sent
@@ -24,6 +25,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   // Generate a random 6-digit OTP
+  /// Generates a random 6-digit OTP by taking the milliseconds since the
+  /// Unix epoch, taking the modulus of 1 million (to ensure a 6-digit OTP),
+  /// and padding it with leading zeroes if necessary.
   String _generateOtp() {
     final random = DateTime.now().millisecondsSinceEpoch % 1000000;
     return random.toString().padLeft(6, '0'); // Ensures a 6-digit OTP
@@ -31,12 +35,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   // Send OTP via Gmail SMTP
   Future<void> _sendEmail(String email, String otp) async {
-    // Configure the Gmail SMTP server with your email and app password
-    final smtpServer = gmail('worldwidenews018@gmail.com', 'dinlvjaqthpewsxi'); // Replace with your credentials
+    // Configure the Gmail SMTP server with the email and app password
+    final smtpServer = gmail('worldwidenews018@gmail.com', 'dinlvjaqthpewsxi');
 
     // Compose the email
     final message = Message()
-      ..from = Address('worldwidenews018@gmail.com', 'WWNapp') // Replace with your Gmail
+      ..from = const Address('worldwidenews018@gmail.com', 'WWNapp')
       ..recipients.add(email) // Recipient's email
       ..subject = 'Your OTP Code' // Subject of the email
       ..text = 'Your OTP code is: $otp'; // Email body
@@ -46,12 +50,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       await send(message, smtpServer);
       print("OTP email successfully sent to $email");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("OTP sent to your email. Please check your inbox and spam/junk folder if you don't see it.")),
+        const SnackBar(
+            content: Text(
+                "OTP sent to your email. Please check your inbox and spam/junk folder if you don't see it.")),
       );
     } catch (e) {
       print("Failed to send OTP email: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to send OTP email. Please try again.")),
+        const SnackBar(
+            content: Text("Failed to send OTP email. Please try again.")),
       );
     }
   }
@@ -72,7 +79,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       // Redirect to Home Screen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => const FirstLoginScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,16 +103,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               children: [
                 const Text(
                   'Verify Your Account',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   'An OTP has been sent to your email: ${widget.email}',
-                  style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold),
                 ),
                 const Text(
                   'Please enter the OTP below to continue.',
-                  style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -144,7 +160,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       onPressed: _validateOtp,
                       child: const Text(
                         'Verify OTP',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -152,7 +171,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       onPressed: _sendOtp,
                       child: const Text(
                         'Resend OTP',
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16),
                       ),
                     ),
                   ],

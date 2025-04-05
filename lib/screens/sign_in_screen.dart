@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/google_auth_service.dart'; // Import Google Auth Service
-import '../services/facebook_auth_service.dart'; // Import Facebook Auth Service
-import 'home_screen.dart'; // Import Home Screen
-import 'forgot_password_screen.dart'; // Import Forgot Password Screen
+import '../services/google_auth_service.dart';
+import '../services/facebook_auth_service.dart';
+import 'home_screen.dart';
+import 'forgot_password_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -16,32 +16,16 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _rememberMe = false; // Remember Me checkbox state
+  bool _rememberMe = false;
+  bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
   @override
   void initState() {
     super.initState();
-    _loadCredentials(); // Load cached credentials when the screen initializes
-    _checkLoginState();
+    _loadCredentials();
   }
 
-  // Check login state and redirect if logged in
-  Future<void> _checkLoginState() async {
-    final prefs = await SharedPreferences.getInstance();
-    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-
-    if (isLoggedIn) {
-      // Navigate directly to Home Screen if user is already logged in
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      });
-    }
-  }
-
-  // Load credentials from cache
   Future<void> _loadCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -51,11 +35,9 @@ class _SignInScreenState extends State<SignInScreen> {
     });
   }
 
-
-  // Save login state and credentials based on Remember Me
   Future<void> _saveLoginState() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', true); // Always save login state
+    await prefs.setBool('isLoggedIn', true);
     if (_rememberMe) {
       await prefs.setString('email', _emailController.text.trim());
       await prefs.setString('password', _passwordController.text.trim());
@@ -67,71 +49,104 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  // Sign in with Email and Password
   Future<void> _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      _showError("Please enter a valid email address");
+      return;
+    }
+
+    if (password.isEmpty) {
+      _showError("Please enter your password");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
       );
-      // Save login state to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      _saveLoginState(); // Save credentials only if Remember Me is checked
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Sign In Successful!")),
-      );
-      // Navigate to HomeScreen after successful sign-in
+      
+      await _saveLoginState();
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
+    } on FirebaseAuthException catch (e) {
+      _handleFirebaseError(e);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign In Failed: $e")),
-      );
+      _showError("An unexpected error occurred");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Sign in with Google
+  void _handleFirebaseError(FirebaseAuthException e) {
+    String message = "Sign in failed";
+    switch (e.code) {
+      case 'user-not-found':
+      case 'wrong-password':
+        message = "Invalid email or password";
+        break;
+      case 'user-disabled':
+        message = "This account has been disabled";
+        break;
+      case 'too-many-requests':
+        message = "Too many attempts. Try again later";
+        break;
+      default:
+        message = e.message ?? "Authentication failed";
+    }
+    _showError(message);
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
   Future<void> _signInWithGoogle() async {
     try {
+      setState(() => _isLoading = true);
       final user = await GoogleAuthService().signInWithGoogle();
-      if (user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Signed in as ${user.displayName}")),
-        );
-        // Navigate to HomeScreen after successful sign-in
+      if (user != null && mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In Failed: $e")),
-      );
+      _showError("Google Sign-In Failed: ${e.toString()}");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Sign in with Facebook
   Future<void> _signInWithFacebook() async {
     try {
+      setState(() => _isLoading = true);
       final user = await FacebookAuthService().signInWithFacebook();
-      if (user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Signed in as ${user.displayName}")),
-        );
-        // Navigate to HomeScreen after successful sign-in
+      if (user != null && mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Facebook Sign-In Failed: $e")),
-      );
+      _showError("Facebook Sign-In Failed: ${e.toString()}");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -140,6 +155,7 @@ class _SignInScreenState extends State<SignInScreen> {
     return Scaffold(
       body: Stack(
         children: [
+          // Header Section
           Positioned(
             top: 0,
             left: 0,
@@ -189,6 +205,8 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
           ),
+          
+          // Form Section
           Positioned(
             top: MediaQuery.of(context).size.height / 4,
             left: MediaQuery.of(context).size.width * 0.05,
@@ -208,19 +226,33 @@ class _SignInScreenState extends State<SignInScreen> {
                     TextField(
                       controller: _emailController,
                       decoration: const InputDecoration(
-                        labelText: 'E-mail',
+                        labelText: 'Email',
                         border: OutlineInputBorder(),
                       ),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: !_isPasswordVisible,
+                      decoration: InputDecoration(
                         labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.visibility_off),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
+                      textInputAction: TextInputAction.done,
                     ),
                     Row(
                       children: [
@@ -235,16 +267,16 @@ class _SignInScreenState extends State<SignInScreen> {
                         const Text('Remember Me'),
                         const Spacer(),
                         TextButton(
-                          onPressed: () {
-                            // Navigate to ForgotPasswordScreen
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ForgotPasswordScreen(),
-                              ),
-                            );
-                          },
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ForgotPasswordScreen(),
+                                    ),
+                                  );
+                                },
                           child: const Text('Forgot Password?'),
                         ),
                       ],
@@ -254,45 +286,37 @@ class _SignInScreenState extends State<SignInScreen> {
                         backgroundColor: const Color.fromARGB(255, 203, 55, 45),
                         minimumSize: const Size(double.infinity, 50),
                       ),
-                      onPressed: _signIn,
-                      child: const Text(
-                        'SIGN IN',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      onPressed: _isLoading ? null : _signIn,
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'SIGN IN',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
                     Column(
                       children: [
                         ElevatedButton.icon(
-                          onPressed: _signInWithGoogle,
-                          icon:
-                              Image.asset('assets/google_icon.png', height: 24),
-                          label: const Text('Sign in with Google'),
+                          onPressed: _isLoading ? null : _signInWithGoogle,
+                          icon: Image.asset('assets/google_icon.png', height: 24),
+                          label: const Text('Sign in with Google', style: TextStyle(color: Colors.black),),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color.fromARGB(255, 216, 215, 215),
-                            side: const BorderSide(
-                                color: Color.fromARGB(255, 216, 215, 215)),
-                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
                             minimumSize: const Size(double.infinity, 50),
                           ),
                         ),
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
-                          onPressed: _signInWithFacebook,
-                          icon: Image.asset('assets/facebook_icon.png',
-                              height: 24),
-                          label: const Text('Sign in with Facebook'),
+                          onPressed: _isLoading ? null : _signInWithFacebook,
+                          icon: Image.asset('assets/facebook_icon.png', height: 24),
+                          label: const Text('Sign in with Facebook', style: TextStyle(color: Colors.black),),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color.fromARGB(255, 216, 215, 215),
-                            side: const BorderSide(
-                                color: Color.fromARGB(255, 216, 215, 215)),
-                            foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                            backgroundColor: const Color.fromARGB(255, 216, 215, 215),
                             minimumSize: const Size(double.infinity, 50),
                           ),
                         ),
@@ -303,6 +327,8 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
             ),
           ),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator()),
         ],
       ),
     );
