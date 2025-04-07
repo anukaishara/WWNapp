@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' as html; // For parsing HTML
+import 'package:html/parser.dart' as html;
 
 class ArticleScreen extends StatefulWidget {
   final dynamic article;
@@ -23,12 +23,9 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
   Future<void> _fetchFullContent() async {
     try {
-      // Fetch the full article content from the URL
       final response = await http.get(Uri.parse(widget.article['url']));
       if (response.statusCode == 200) {
-        // Parse the HTML content
         final document = html.parse(response.body);
-        // Extract the article content (customize this based on the website structure)
         final content = document.querySelector('article')?.text ?? 'No content available';
         setState(() {
           _fullContent = content;
@@ -53,39 +50,56 @@ class _ArticleScreenState extends State<ArticleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      //  red AppBar 
       appBar: AppBar(
-        title: Text(widget.article['title'] ?? 'Article'),
+        backgroundColor: Colors.red,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark_border, color: Colors.white),
+            onPressed: () {
+              // Bookmark icon
+            },
+          ),
+        ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(10),
+          child: Divider(color: Colors.white, height: 10, thickness: 10),
+        ),
       ),
+
+      
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Article image (if available)
             if (widget.article['urlToImage'] != null && widget.article['urlToImage'].isNotEmpty)
               Image.network(
                 widget.article['urlToImage'],
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) {
-                    return child; // Return the image when fully loaded
+                    return child;
                   }
                   return Container(
-                    height: 200, // Set a fixed height for the placeholder
-                    color: Colors.grey[300], // Show a grey placeholder
+                    height: 200,
+                    color: Colors.grey[300],
                     child: const Center(child: CircularProgressIndicator()),
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    height: 200, // Set a fixed height for the error widget
-                    color: Colors.grey[300], // Show a grey box for errors
+                    height: 200,
+                    color: Colors.grey[300],
                     child: const Icon(Icons.error, color: Colors.red),
                   );
                 },
               ),
             const SizedBox(height: 16),
-            // Article title
             Text(
               widget.article['title'] ?? 'No Title',
               style: const TextStyle(
@@ -94,7 +108,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            // Article published date
             Text(
               widget.article['publishedAt'] != null
                   ? 'Published on: ${_formatDate(widget.article['publishedAt'])}'
@@ -105,7 +118,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Article description
             Text(
               widget.article['description'] ?? 'No Description',
               style: const TextStyle(
@@ -113,7 +125,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Full article content
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : Text(
@@ -125,10 +136,31 @@ class _ArticleScreenState extends State<ArticleScreen> {
           ],
         ),
       ),
+
+      // Bottom Navigation Bar 
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.red,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.video_library),
+            label: 'Videos',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
+        ],
+        
+      ),
     );
   }
 
-  // Helper function to format the date
   String _formatDate(String dateString) {
     final date = DateTime.tryParse(dateString);
     if (date != null) {

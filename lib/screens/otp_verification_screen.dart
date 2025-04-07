@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
-import 'home_screen.dart';
 import 'first_login_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
