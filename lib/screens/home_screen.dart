@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../Services/api_service.dart'; // Import the ApiService
 import 'profile_screen.dart'; // Import the ProfileScreen
 import 'article_screen.dart'; // Import the ArticleScreen
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,14 +24,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Track loading state
   bool isLoading = false;
-
+/*
   @override
   void initState() {
     super.initState();
     // Fetch news when the screen is first loaded
     _fetchNews(_selectedCategory);
   }
-
+*/
   // Fetch news from the API based on the selected category
   Future<void> _fetchNews(String category) async {
     setState(() {
@@ -73,13 +75,43 @@ class _HomeScreenState extends State<HomeScreen> {
             newsArticles = cachedNews[category]!;
           });
         } else {
-          // Fetch news from the API
-          final articles = await ApiService.fetchEverythingFromNewsAPI(query: query);
-          cachedNews[category] = articles; // Cache the results
-          setState(() {
-            newsArticles = articles;
-          });
+          await ApiService.fetchAndSaveArticles(query: query); // Save to Firestore
+
+          final firestore = FirebaseFirestore.instance;
+          final collection = firestore.collection('articles');
+
+          try {
+            print("Fetching articles for category: $category");
+
+            print("Fetching articles for category: '$category'");
+
+            final snapshot = await collection.get(); // Fetch all articles to inspect categories
+            for (var doc in snapshot.docs) {
+              print("Stored category in Firestore: '${doc['category']}'");
+            }
+
+// Now query Firestore using a standardized category
+            final querySnapshot = await collection
+                .where('category', isEqualTo: category.toLowerCase().trim()) // Ensure consistency
+                .orderBy('publishedAt', descending: true)
+                .get();
+
+            print("Fetched ${querySnapshot.docs.length} articles for category: '$category'");
+
+            final articles = querySnapshot.docs.map((doc) => doc.data()).toList();
+
+            cachedNews[category] = articles;
+
+            setState(() {
+              newsArticles = articles;
+            });
+
+          } catch (e) {
+            print("Error fetching articles from Firestore: $e");
+          }
         }
+
+
       }
     } catch (e) {
       // Show error message to the user
@@ -147,6 +179,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       bottomNavigationBar: _buildCustomFooter(), // Replace BottomAppBar
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.red,
+        child: const Icon(Icons.cloud_upload, color: Colors.white),
+        onPressed: () async {
+          try {
+            await ApiService.fetchAndSaveArticles(query: 'technology'); // You can change this
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Articles saved to Firestore!')),
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error saving articles: $e')),
+            );
+          }
+        },
+      ),
+      // Replace BottomAppBar
     );
   }
 
@@ -426,13 +475,13 @@ class _HomeScreenState extends State<HomeScreen> {
         // Handle navigation based on index
         switch (index) {
           case 0:
-            // Stay on Home
+          // Stay on Home
             break;
           case 1:
-            // Navigate to Videos
+          // Navigate to Videos
             break;
           case 2:
-            // Navigate to Search
+          // Navigate to Search
             break;
         }
       },
