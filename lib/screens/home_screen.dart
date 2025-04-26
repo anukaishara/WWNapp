@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../Services/api_service.dart'; // Import the ApiService
 import 'profile_screen.dart'; // Import the ProfileScreen
 import 'article_screen.dart'; // Import the ArticleScreen
+import 'menu_screen.dart'; // Import menu screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -113,7 +114,13 @@ class _HomeScreenState extends State<HomeScreen> {
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.white), // Menu icon
           onPressed: () {
-            // Handle menu action
+            // Navigate to menu screen
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MenuScreen(),
+                ),
+              );
           },
         ),
         actions: [
@@ -439,3 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+
+
+

@@ -74,7 +74,7 @@ class _SignInScreenState extends State<SignInScreen> {
       await _saveLoginState();
 
       if (!mounted) return;
-      Navigator.pushReplacement(
+            Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
