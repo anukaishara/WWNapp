@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class FirstLoginScreen extends StatefulWidget {
-  const FirstLoginScreen({Key? key}) : super(key: key);
+  const FirstLoginScreen({super.key});
 
   @override
   State<FirstLoginScreen> createState() => _FirstLoginScreenState();

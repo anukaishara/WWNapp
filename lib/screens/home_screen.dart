@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../Services/api_service.dart'; // Import the ApiService
-import 'profile_screen.dart'; // Import the ProfileScreen
-import 'article_screen.dart'; // Import the ArticleScreen
+import '../Services/api_service.dart';
+import 'profile_screen.dart';
+import 'article_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,35 +11,41 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Track the selected category
   String _selectedCategory = "For you";
-
-  // Store fetched news articles
   List<dynamic> newsArticles = [];
-
-  // Cache news articles for each category
   final Map<String, List<dynamic>> cachedNews = {};
-
-  // Track loading state
   bool isLoading = false;
+  
+  // Scroll position management
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, double> _scrollPositions = {};
 
   @override
   void initState() {
     super.initState();
-    // Fetch news when the screen is first loaded
     _fetchNews(_selectedCategory);
   }
 
-  // Fetch news from the API based on the selected category
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchNews(String category) async {
+    // Save current scroll position before switching
+    if (_scrollController.hasClients) {
+      _scrollPositions[_selectedCategory] = _scrollController.position.pixels;
+    }
+
     setState(() {
       isLoading = true;
+      _selectedCategory = category;
     });
 
-    // Map categories to relevant queries
     final categoryToQuery = {
-      "For you": "", // Empty query for "For you"
-      "Top": "news", // General news for "Top"
+      "For you": "",
+      "Top": "news",
       "Sports": "sports",
       "Business": "business",
       "History": "history",
@@ -49,7 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       if (category == "All") {
-        // Combine news from all categories except "For you" and "All"
         final allArticles = <dynamic>[];
         for (final cat in cachedNews.keys) {
           if (cat != "For you" && cat != "All") {
@@ -60,29 +65,24 @@ class _HomeScreenState extends State<HomeScreen> {
           newsArticles = allArticles;
         });
       } else if (category == "For you") {
-        // Keep "For you" tab empty
         setState(() {
           newsArticles = [];
         });
       } else {
-        // Fetch news for the selected category
         final query = categoryToQuery[category] ?? 'news';
         if (cachedNews.containsKey(category)) {
-          // Use cached news if available
           setState(() {
             newsArticles = cachedNews[category]!;
           });
         } else {
-          // Fetch news from the API
           final articles = await ApiService.fetchEverythingFromNewsAPI(query: query);
-          cachedNews[category] = articles; // Cache the results
+          cachedNews[category] = articles;
           setState(() {
             newsArticles = articles;
           });
         }
       }
     } catch (e) {
-      // Show error message to the user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to fetch news: $e'),
@@ -94,6 +94,15 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         isLoading = false;
       });
+      
+      // Restore scroll position after build completes
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollPositions.containsKey(category)) {
+          _scrollController.jumpTo(_scrollPositions[category]!);
+        } else {
+          _scrollController.jumpTo(0);
+        }
+      });
     }
   }
 
@@ -101,26 +110,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.red, // Red background
+        backgroundColor: Colors.red,
         title: const Text(
           'WWN',
           style: TextStyle(
-            color: Colors.white, // White title color
+            color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
-        centerTitle: true, // Center the title
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white), // Menu icon
-          onPressed: () {
-            // Handle menu action
-          },
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () {},
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person, color: Colors.white), // Profile icon
+            icon: const Icon(Icons.person, color: Colors.white),
             onPressed: () {
-              // Navigate to ProfileScreen
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -135,38 +141,31 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             Container(
-              height: 10, // White ribbon height
-              color: Colors.white, // White ribbon color
+              height: 10,
+              color: Colors.white,
             ),
             const SizedBox(height: 8),
-            _buildCategoryFilters(), // Horizontal category filters
+            _buildCategoryFilters(),
             Expanded(
-              child: _buildNewsContent(), // Show news for the selected category
+              child: _buildNewsContent(),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: _buildCustomFooter(), // Replace BottomAppBar
+      bottomNavigationBar: _buildCustomFooter(),
     );
   }
 
-  // Horizontal Category Filters
   Widget _buildCategoryFilters() {
     final categories = [
-      "For you",
-      "All",
-      "Top", // Renamed from "News"
-      "Sports",
-      "Business",
-      "History",
-      "Technology",
-      "Others"
+      "For you", "All", "Top", "Sports", 
+      "Business", "History", "Technology", "Others"
     ];
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: SizedBox(
-        height: 40.0, // Set a fixed height for the slider
+        height: 40.0,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           itemCount: categories.length,
@@ -176,26 +175,23 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
               child: ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    _selectedCategory = category;
-                  });
-
-                  // Fetch news for the selected category
-                  _fetchNews(category);
+                  if (_selectedCategory != category) {
+                    _fetchNews(category);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _selectedCategory == category
                       ? Colors.white
-                      : Colors.red, // White for selected, red for others
+                      : Colors.red,
                   foregroundColor: _selectedCategory == category
                       ? Colors.black
-                      : Colors.white, // Black text for selected, white for others
+                      : Colors.white,
                   side: BorderSide(
                     color: _selectedCategory == category
                         ? Colors.black
                         : Colors.red,
                     width: 1.0,
-                  ), // Black border for selected
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -213,35 +209,34 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Real News Content for the Selected Category
   Widget _buildNewsContent() {
     if (isLoading) {
       return const Center(
-        child: CircularProgressIndicator(), // Show loading indicator
+        child: CircularProgressIndicator(),
       );
     }
 
     if (newsArticles.isEmpty) {
       return const Center(
-        child: Text('No news available'), // Show a message if no articles are fetched
+        child: Text('No news available'),
       );
     }
 
     return RefreshIndicator(
       onRefresh: () async {
-        await _fetchNews(_selectedCategory); // Refresh news
+        await _fetchNews(_selectedCategory);
+        _scrollController.jumpTo(0);
       },
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.only(bottom: 60),
         itemCount: newsArticles.length,
         itemBuilder: (context, index) {
           final article = newsArticles[index];
 
-          // First article (big card with large image)
           if (index == 0) {
             return GestureDetector(
               onTap: () {
-                // Navigate to the ArticleScreen with the selected article
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -252,13 +247,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Card(
                 margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0), // Rounded corners
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
-                elevation: 4, // Add shadow
+                elevation: 4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Large news image (if available)
                     if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
                       ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
@@ -269,12 +263,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           fit: BoxFit.cover,
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) {
-                              return child; // Return the image when fully loaded
+                              return child;
                             }
                             return Container(
                               height: 200,
                               width: double.infinity,
-                              color: Colors.grey[300], // Show a grey placeholder
+                              color: Colors.grey[300],
                               child: const Center(child: CircularProgressIndicator()),
                             );
                           },
@@ -282,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             return Container(
                               height: 200,
                               width: double.infinity,
-                              color: Colors.grey[300], // Show a grey box for errors
+                              color: Colors.grey[300],
                               child: const Icon(Icons.error, color: Colors.red),
                             );
                           },
@@ -292,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         height: 200,
                         width: double.infinity,
-                        color: Colors.grey[300], // Show a grey box as a fallback
+                        color: Colors.grey[300],
                         child: const Icon(Icons.image, color: Colors.white),
                       ),
                     Padding(
@@ -300,7 +294,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // News title (larger font for the first article)
                           Text(
                             article['title'] ?? 'No Title',
                             style: const TextStyle(
@@ -317,10 +310,8 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          // Remaining articles (smaller cards)
           return GestureDetector(
             onTap: () {
-              // Navigate to the ArticleScreen with the selected article
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -331,13 +322,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Card(
               margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0), // Rounded corners
+                borderRadius: BorderRadius.circular(12.0),
               ),
-              elevation: 4, // Add shadow
+              elevation: 4,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // News image (smaller image for remaining articles)
                   if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
                     ClipRRect(
                       borderRadius: const BorderRadius.horizontal(left: Radius.circular(12.0)),
@@ -348,12 +338,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) {
-                            return child; // Return the image when fully loaded
+                            return child;
                           }
                           return Container(
                             height: 100,
                             width: 100,
-                            color: Colors.grey[300], // Show a grey placeholder
+                            color: Colors.grey[300],
                             child: const Center(child: CircularProgressIndicator()),
                           );
                         },
@@ -361,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return Container(
                             height: 100,
                             width: 100,
-                            color: Colors.grey[300], // Show a grey box for errors
+                            color: Colors.grey[300],
                             child: const Icon(Icons.error, color: Colors.red),
                           );
                         },
@@ -371,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       height: 100,
                       width: 100,
-                      color: Colors.grey[300], // Show a grey box as a fallback
+                      color: Colors.grey[300],
                       child: const Icon(Icons.image, color: Colors.white),
                     ),
                   Expanded(
@@ -380,7 +370,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // News title
                           Text(
                             article['title'] ?? 'No Title',
                             style: const TextStyle(
@@ -401,12 +390,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Custom Footer Navigation
   Widget _buildCustomFooter() {
     return BottomNavigationBar(
-      backgroundColor: Colors.red, // Red background color
-      selectedItemColor: Colors.white, // White for selected item
-      unselectedItemColor: Colors.white70, // Light white for unselected items
+      backgroundColor: Colors.red,
+      selectedItemColor: Colors.white,
+      unselectedItemColor: Colors.white70,
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
@@ -421,18 +409,14 @@ class _HomeScreenState extends State<HomeScreen> {
           label: 'Search',
         ),
       ],
-      currentIndex: 0, // Set the active item
+      currentIndex: 0,
       onTap: (index) {
-        // Handle navigation based on index
         switch (index) {
           case 0:
-            // Stay on Home
             break;
           case 1:
-            // Navigate to Videos
             break;
           case 2:
-            // Navigate to Search
             break;
         }
       },
