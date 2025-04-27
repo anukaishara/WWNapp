@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'bookmark_screen.dart'; 
 import 'package:wwn_app/screens/set_preferences_screen.dart';
 
 
@@ -30,25 +31,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.red, // Red background for ProfileScreen
+        backgroundColor: Colors.red,
         title: const Text(
           'Profile',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold, // Bold the title
-            fontSize: 24, // Increased font size for the title
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pop(context); // Go back to HomeScreen
+            Navigator.pop(context);
           },
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,14 +57,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Profile picture and user name
               Row(
                 children: [
-                  // Profile picture placeholder
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: Colors.grey[300], // Placeholder color
+                    backgroundColor: Colors.grey[300],
                   ),
                   const SizedBox(width: 16),
-                  // Blank space for the user's name
                   Expanded(
+
                     child: Text(
                          _name,
                         style: const TextStyle(
@@ -90,7 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Text(
                       'Reset Password',
                       style: TextStyle(
-                        fontSize: 20, // Font size for box text
+                        fontSize: 20,
                         color: Colors.black,
                       ),
                     ),
@@ -130,14 +130,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Text(
                       'Manage Privacy',
                       style: TextStyle(
-                        fontSize: 20, // Font size for box text
+                        fontSize: 20,
                         color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  // Bookmarks
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const BookmarkScreen()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'Bookmarks',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ),
                   // Logout
                   GestureDetector(
-                    onTap: () => _showLogoutConfirmation(context), // Trigger logout confirmation
+                    onTap: () => _showLogoutConfirmation(context),
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -147,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text(
                         'Logout',
                         style: TextStyle(
-                          fontSize: 20, // Font size for box text
+                          fontSize: 20,
                           color: Colors.black,
                         ),
                       ),
@@ -162,7 +186,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Show logout confirmation dialog
   void _showLogoutConfirmation(BuildContext context) {
     showDialog(
       context: context,
@@ -173,22 +196,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context);
               },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
-                // Clear login state using SharedPreferences
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('isLoggedIn', false); // Reset login state
-
-                // Navigate back to the title screen
+                await prefs.setBool('isLoggedIn', false);
                 Navigator.popUntil(context, (route) => route.isFirst);
               },
               child: const Text(
                 'Logout',
-                style: TextStyle(color: Colors.red), // Highlight logout action in red
+                style: TextStyle(color: Colors.red),
               ),
             ),
           ],
