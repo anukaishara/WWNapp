@@ -3,6 +3,8 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'first_login_screen.dart';
 
+
+
 class OtpVerificationScreen extends StatefulWidget {
   final String email; // Email to which OTP is sent
   const OtpVerificationScreen({super.key, required this.email});
@@ -14,6 +16,8 @@ class OtpVerificationScreen extends StatefulWidget {
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final TextEditingController _otpController = TextEditingController();
   String? _generatedOtp;
+
+
 
   @override
   void initState() {
@@ -74,7 +78,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("OTP Verified!")),
       );
-
+      
+      
       // Redirect to Home Screen
       Navigator.pushReplacement(
         context,

@@ -1,9 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'bookmark_screen.dart'; 
+import 'package:wwn_app/screens/set_preferences_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String _name = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
+  }
+
+  Future<void> _loadName() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _name = prefs.getString('username') ?? 'Guest';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,16 +63,12 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Enter your name',
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                        hintStyle: TextStyle(color: Colors.grey[600]),
-                      ),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+
+                    child: Text(
+                         _name,
+                        style: const TextStyle(
+                        fontSize: 24, // Increased font size for name
+                        fontWeight: FontWeight.bold, // Bold text
                       ),
                     ),
                   ),
@@ -78,21 +96,29 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   // Set Preferences
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Set Preferences',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.black,
-                      ),
+                   GestureDetector(
+                         onTap: () {
+                         Navigator.push(
+                         context,
+                         MaterialPageRoute(builder: (context) => const PreferencesScreen()),
+                         );
+                        },
+                     child: Container(
+                     padding: const EdgeInsets.all(16),
+                     margin: const EdgeInsets.only(bottom: 8),
+                     decoration: BoxDecoration(
+                     color: Colors.grey[200],
+                     borderRadius: BorderRadius.circular(10),
+                   ),
+                     child: const Text(
+                    'Set Preferences',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.black,
                     ),
                   ),
+                 ),
+                ),
                   // Manage Privacy
                   Container(
                     padding: const EdgeInsets.all(16),
