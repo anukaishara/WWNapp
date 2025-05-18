@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../Services/api_service.dart'; // Import the ApiService
+import 'profile_screen.dart'; // Import the ProfileScreen
+import 'article_screen.dart'; // Import the ArticleScreen
+import 'menu_screen.dart'; // Import menu screen
+import 'search_screen.dart'; // Import menu screen
 import 'package:flutter/services.dart';
-import '../Services/api_service.dart';
-import 'profile_screen.dart';
-import 'article_screen.dart';
-import 'menu_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -599,13 +601,23 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: (index) {
         switch (index) {
           case 0:
-            // Stay on Home
+
+          // Stay on Home
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+
             break;
           case 1:
-            // Navigate to Videos
-            break;
+          // Navigate to Videos
+                      break;
           case 2:
-            // Navigate to Search
+          // Navigate to Search
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SearchScreen()),
+          );
             break;
         }
       },
