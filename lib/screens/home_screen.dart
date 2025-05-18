@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../Services/api_service.dart'; // Import the ApiService
-import 'profile_screen.dart'; // Import the ProfileScreen
-import 'article_screen.dart'; // Import the ArticleScreen
-import 'menu_screen.dart'; // Import menu screen
-import 'search_screen.dart'; // Import menu screen
+import '../services/api_service.dart'; // Make sure the path/case matches your project
+import 'profile_screen.dart';
+import 'article_screen.dart';
+import 'menu_screen.dart';
+import 'search_screen.dart';
 import 'package:flutter/services.dart';
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final Map<String, List<Map<String, dynamic>>> cachedNews = {};
   bool isLoading = false;
 
-  // Scroll position management
   final ScrollController _scrollController = ScrollController();
   final Map<String, double> _scrollPositions = {};
 
@@ -65,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
         print('Error preloading $category: $e');
       }
     }
-    // Optionally, show "All" or the initial category if needed
+    // Show "All" or initial category if needed
     if (_selectedCategory == "All") {
       _showAllTabArticles();
     } else if (preloadCategories.contains(_selectedCategory)) {
@@ -78,9 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-
-  Future<void> _fetchNews(String category) async {
-
   void _showAllTabArticles() {
     final allArticles = <Map<String, dynamic>>[];
     for (final cat in preloadCategories) {
@@ -92,8 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
-    // Save current scroll position before switching
-
     if (_scrollController.hasClients) {
       _scrollPositions[_selectedCategory] = _scrollController.position.pixels;
     }
@@ -116,7 +109,6 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             newsArticles = cachedNews[category] ?? [];
           });
-
         }
 
         // Always fetch latest articles in background and update cache/UI
@@ -126,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
           newsArticles = freshArticles;
           cachedNews[category] = freshArticles;
         });
-
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -139,7 +130,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         isLoading = false;
       });
-
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollPositions.containsKey(category)) {
           _scrollController.jumpTo(_scrollPositions[category]!);
@@ -176,23 +166,9 @@ class _HomeScreenState extends State<HomeScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MenuScreen(),
-              ),
-            );
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -216,30 +192,38 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-
         body: SafeArea(
           child: Column(
             children: [
               Container(
                 height: 10,
                 color: Colors.white,
-      ),
-      bottomNavigationBar: _buildCustomFooter(),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.red,
-        child: const Icon(Icons.cloud_upload, color: Colors.white),
-        onPressed: () async {
-          try {
-            await ApiService.fetchAndDisplayArticles(query: 'technology');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Articles fetched and saved!')),
-            );
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error fetching articles: $e')),
-            );
-          }
-        },
+              ),
+              const SizedBox(height: 8),
+              _buildCategoryFilters(),
+              Expanded(
+                child: _buildNewsContent(),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _buildCustomFooter(),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: Colors.red,
+          child: const Icon(Icons.cloud_upload, color: Colors.white),
+          onPressed: () async {
+            try {
+              await ApiService.fetchAndDisplayArticles(query: 'technology');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Articles fetched and saved!')),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error fetching articles: $e')),
+              );
+            }
+          },
+        ),
       ),
     );
   }
@@ -275,8 +259,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      _selectedCategory == category ? Colors.white : Colors.red,
+                  backgroundColor: _selectedCategory == category
+                      ? Colors.white
+                      : Colors.red,
                   foregroundColor: _selectedCategory == category
                       ? Colors.black
                       : Colors.white,
@@ -296,29 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Text(category),
               ),
-              const SizedBox(height: 8),
-              _buildCategoryFilters(),
-              Expanded(
-                child: _buildNewsContent(),
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: _buildCustomFooter(),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: Colors.red,
-          child: const Icon(Icons.cloud_upload, color: Colors.white),
-          onPressed: () async {
-            try {
-              await ApiService.fetchAndSaveArticles(query: 'technology');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Articles saved to Firestore!')),
-              );
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error saving articles: $e')),
-              );
-            }
+            );
           },
         ),
       ),
@@ -525,59 +488,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategoryFilters() {
-    final categories = [
-      "For you", "All", "Top", "Sports", 
-      "Business", "History", "Technology", "Others"
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: SizedBox(
-        height: 40.0,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_selectedCategory != category) {
-                    _fetchNews(category);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedCategory == category
-                      ? Colors.white
-                      : Colors.red,
-                  foregroundColor: _selectedCategory == category
-                      ? Colors.black
-                      : Colors.white,
-                  side: BorderSide(
-                    color: _selectedCategory == category
-                        ? Colors.black
-                        : Colors.red,
-                    width: 1.0,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
-                ),
-                child: Text(category),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _buildCustomFooter() {
     return BottomNavigationBar(
       backgroundColor: Colors.red,
@@ -601,27 +511,20 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: (index) {
         switch (index) {
           case 0:
-
-          // Stay on Home
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-
+            // Stay on Home
             break;
           case 1:
-          // Navigate to Videos
-                      break;
+            // Navigate to Videos
+            break;
           case 2:
-          // Navigate to Search
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SearchScreen()),
-          );
+            // Navigate to Search
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SearchScreen()),
+            );
             break;
         }
       },
     );
   }
 }
-
