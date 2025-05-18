@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../Services/api_service.dart'; // Import the ApiService
-import 'profile_screen.dart'; // Import the ProfileScreen
-import 'article_screen.dart'; // Import the ArticleScreen
-import 'menu_screen.dart'; // Import menu screen
-
+import '../services/api_service.dart'; // Make sure the path/case matches your project
+import 'profile_screen.dart';
+import 'article_screen.dart';
+import 'menu_screen.dart';
+import 'search_screen.dart';
+import 'package:flutter/services.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,33 +16,77 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = "For you";
-  List<dynamic> newsArticles = [];
-  final Map<String, List<dynamic>> cachedNews = {};
+  List<Map<String, dynamic>> newsArticles = [];
+  final Map<String, List<Map<String, dynamic>>> cachedNews = {};
   bool isLoading = false;
 
-  // Scroll position management
   final ScrollController _scrollController = ScrollController();
   final Map<String, double> _scrollPositions = {};
 
+  final List<String> preloadCategories = [
+    "Top",
+    "Sports",
+    "Business",
+    "Technology",
+    "Politics",
+    "Entertainment",
+    "Others"
+  ];
 
-/*
+  final Map<String, String> categoryToQuery = {
+    "For you": "",
+    "Top": "news",
+    "Sports": "sports",
+    "Business": "business",
+    "Technology": "technology",
+    "Politics": "politics",
+    "Entertainment": "entertainment",
+    "Others": "world",
+  };
+
   @override
   void initState() {
     super.initState();
-    _fetchNews(_selectedCategory);
-  }
-    // Fetch news from the API based on the selected category
-*/
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+    _preloadAllCategories();
   }
 
+  Future<void> _preloadAllCategories() async {
+    setState(() {
+      isLoading = true;
+    });
+    for (final category in preloadCategories) {
+      final query = categoryToQuery[category] ?? 'news';
+      try {
+        final freshArticles = await ApiService.fetchAndDisplayArticles(query: query);
+        cachedNews[category] = freshArticles;
+      } catch (e) {
+        print('Error preloading $category: $e');
+      }
+    }
+    // Show "All" or initial category if needed
+    if (_selectedCategory == "All") {
+      _showAllTabArticles();
+    } else if (preloadCategories.contains(_selectedCategory)) {
+      setState(() {
+        newsArticles = cachedNews[_selectedCategory] ?? [];
+      });
+    }
+    setState(() {
+      isLoading = false;
+    });
+  }
 
-  Future<void> _fetchNews(String category) async {
-    // Save current scroll position before switching
+  void _showAllTabArticles() {
+    final allArticles = <Map<String, dynamic>>[];
+    for (final cat in preloadCategories) {
+      allArticles.addAll(cachedNews[cat] ?? []);
+    }
+    setState(() {
+      newsArticles = allArticles;
+    });
+  }
+
+  Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
     if (_scrollController.hasClients) {
       _scrollPositions[_selectedCategory] = _scrollController.position.pixels;
     }
@@ -51,75 +96,28 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedCategory = category;
     });
 
-    final categoryToQuery = {
-      "For you": "",
-      "Top": "news",
-      "Sports": "sports",
-      "Business": "business",
-      "History": "history",
-      "Technology": "technology",
-      "Others": "world",
-    };
-
     try {
       if (category == "All") {
-        final allArticles = <dynamic>[];
-        for (final cat in cachedNews.keys) {
-          if (cat != "For you" && cat != "All") {
-            allArticles.addAll(cachedNews[cat]!);
-          }
-        }
-        setState(() {
-          newsArticles = allArticles;
-        });
+        _showAllTabArticles();
       } else if (category == "For you") {
         setState(() {
           newsArticles = [];
         });
       } else {
-        final query = categoryToQuery[category] ?? 'news';
-        if (cachedNews.containsKey(category)) {
+        // Show cached articles instantly unless forceRefresh
+        if (!forceRefresh && cachedNews.containsKey(category)) {
           setState(() {
-            newsArticles = cachedNews[category]!;
+            newsArticles = cachedNews[category] ?? [];
           });
-        } else {
-          await ApiService.fetchAndSaveArticles(query: query); // Save to Firestore
-
-          final firestore = FirebaseFirestore.instance;
-          final collection = firestore.collection('articles');
-
-          try {
-            print("Fetching articles for category: $category");
-
-            print("Fetching articles for category: '$category'");
-
-            final snapshot = await collection.get(); // Fetch all articles to inspect categories
-            for (var doc in snapshot.docs) {
-              print("Stored category in Firestore: '${doc['category']}'");
-            }
-
-// Now query Firestore using a standardized category
-            final querySnapshot = await collection
-                .where('category', isEqualTo: category.toLowerCase().trim()) // Ensure consistency
-                .orderBy('publishedAt', descending: true)
-                .get();
-
-            print("Fetched ${querySnapshot.docs.length} articles for category: '$category'");
-
-            final articles = querySnapshot.docs.map((doc) => doc.data()).toList();
-
-            cachedNews[category] = articles;
-
-            setState(() {
-              newsArticles = articles;
-            });
-
-          } catch (e) {
-            print("Error fetching articles from Firestore: $e");
-          }
         }
 
-
+        // Always fetch latest articles in background and update cache/UI
+        final query = categoryToQuery[category] ?? 'news';
+        final freshArticles = await ApiService.fetchAndDisplayArticles(query: query);
+        setState(() {
+          newsArticles = freshArticles;
+          cachedNews[category] = freshArticles;
+        });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -128,13 +126,10 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Colors.red,
         ),
       );
-      print('Error fetching news for category $category: $e');
     } finally {
       setState(() {
         isLoading = false;
       });
-      
-      // Restore scroll position after build completes
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollPositions.containsKey(category)) {
           _scrollController.jumpTo(_scrollPositions[category]!);
@@ -147,84 +142,103 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.red,
-        title: const Text(
-          'WWN',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+    return WillPopScope(
+      onWillPop: () async {
+        if (_scrollController.hasClients && _scrollController.offset > 0) {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+          return false;
+        } else {
+          SystemNavigator.pop();
+          return true;
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.red,
+          title: const Text(
+            'WWN',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white), // Menu icon
-          onPressed: () {
-            // Navigate to menu screen
-            Navigator.push(
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const MenuScreen(),
                 ),
               );
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfileScreen(),
-                ),
-              );
             },
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              height: 10,
-              color: Colors.white,
-            ),
-            const SizedBox(height: 8),
-            _buildCategoryFilters(),
-            Expanded(
-              child: _buildNewsContent(),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(),
+                  ),
+                );
+              },
             ),
           ],
         ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                height: 10,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 8),
+              _buildCategoryFilters(),
+              Expanded(
+                child: _buildNewsContent(),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _buildCustomFooter(),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: Colors.red,
+          child: const Icon(Icons.cloud_upload, color: Colors.white),
+          onPressed: () async {
+            try {
+              await ApiService.fetchAndDisplayArticles(query: 'technology');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Articles fetched and saved!')),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error fetching articles: $e')),
+              );
+            }
+          },
+        ),
       ),
-      
-      bottomNavigationBar: _buildCustomFooter(), // Replace BottomAppBar
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.red,
-        child: const Icon(Icons.cloud_upload, color: Colors.white),
-        onPressed: () async {
-          try {
-            await ApiService.fetchAndSaveArticles(query: 'technology'); // You can change this
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Articles saved to Firestore!')),
-            );
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error saving articles: $e')),
-            );
-          }
-        },
-      ),
-      // Replace BottomAppBar
     );
   }
 
   Widget _buildCategoryFilters() {
     final categories = [
-      "For you", "All", "Top", "Sports", 
-      "Business", "History", "Technology", "Others"
+      "For you",
+      "All",
+      "Top",
+      "Sports",
+      "Business",
+      "Technology",
+      "Politics",
+      "Entertainment",
+      "Others"
     ];
 
     return Padding(
@@ -276,11 +290,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNewsContent() {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(
+              color: Colors.red,
+              strokeWidth: 4,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading $_selectedCategory news...',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
       );
     }
-
     if (newsArticles.isEmpty) {
       return const Center(
         child: Text('No news available'),
@@ -289,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        await _fetchNews(_selectedCategory);
+        await _fetchNews(_selectedCategory, forceRefresh: true);
         _scrollController.jumpTo(0);
       },
       child: ListView.builder(
@@ -310,7 +339,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
               child: Card(
-                margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                margin:
+                    const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.0),
                 ),
@@ -318,23 +348,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
+                    if (article['urlToImage'] != null &&
+                        article['urlToImage'].isNotEmpty)
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12.0)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12.0)),
                         child: Image.network(
                           article['urlToImage'],
                           height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
                           loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) {
-                              return child;
-                            }
+                            if (loadingProgress == null) return child;
                             return Container(
                               height: 200,
                               width: double.infinity,
                               color: Colors.grey[300],
-                              child: const Center(child: CircularProgressIndicator()),
+                              child: const Center(
+                                  child: CircularProgressIndicator()),
                             );
                           },
                           errorBuilder: (context, error, stackTrace) {
@@ -385,7 +416,8 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
             child: Card(
-              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              margin:
+                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.0),
               ),
@@ -393,23 +425,24 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
+                  if (article['urlToImage'] != null &&
+                      article['urlToImage'].isNotEmpty)
                     ClipRRect(
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12.0)),
+                      borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(12.0)),
                       child: Image.network(
                         article['urlToImage'],
                         height: 100,
                         width: 100,
                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) {
-                            return child;
-                          }
+                          if (loadingProgress == null) return child;
                           return Container(
                             height: 100,
                             width: 100,
                             color: Colors.grey[300],
-                            child: const Center(child: CircularProgressIndicator()),
+                            child: const Center(
+                                child: CircularProgressIndicator()),
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
@@ -478,20 +511,20 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: (index) {
         switch (index) {
           case 0:
-          // Stay on Home
+            // Stay on Home
             break;
           case 1:
-          // Navigate to Videos
+            // Navigate to Videos
             break;
           case 2:
-          // Navigate to Search
+            // Navigate to Search
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SearchScreen()),
+            );
             break;
         }
       },
     );
   }
 }
-
-
-
-

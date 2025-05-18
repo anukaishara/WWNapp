@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'signup_preference_selection_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesScreen extends StatefulWidget {
   const PreferencesScreen({super.key});
@@ -9,7 +11,22 @@ class PreferencesScreen extends StatefulWidget {
 
 class _PreferencesScreenState extends State<PreferencesScreen> {
   // Start with an empty list
-  final List<String> _categories = [];
+  List<String> _categories = [];
+  List<String> selectedPreferences = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  void _loadPreferences() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      selectedPreferences = prefs.getStringList('userPreferences') ?? [];
+      _categories = List.from(selectedPreferences);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +68,11 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
               ],
             ),
             const SizedBox(height: 16.0),
+            const Text(
+              'Selected Preferences:',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
             Expanded(
               child: _categories.isEmpty
                   ? const Center(
@@ -64,12 +86,14 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                       itemBuilder: (context, index) {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8.0),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(5.0),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: ListTile(
-                            title: Text(_categories[index]),
+                          child: Text(
+                            _categories[index],
+                            style: const TextStyle(fontSize: 18),
                           ),
                         );
                       },
