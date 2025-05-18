@@ -4,7 +4,7 @@ import '../Services/api_service.dart'; // Import the ApiService
 import 'profile_screen.dart'; // Import the ProfileScreen
 import 'article_screen.dart'; // Import the ArticleScreen
 import 'menu_screen.dart'; // Import menu screen
-
+import 'search_screen.dart'; // Import menu screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -479,12 +479,22 @@ class _HomeScreenState extends State<HomeScreen> {
         switch (index) {
           case 0:
           // Stay on Home
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+
             break;
           case 1:
           // Navigate to Videos
-            break;
+                      break;
           case 2:
           // Navigate to Search
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SearchScreen()),
+          );
+
             break;
         }
       },

@@ -1,0 +1,2 @@
+D:/software_03/WWNapp/android/app/.cxx/Debug/p2o3b4k3/armeabi-v7a/CMakeFiles/edit_cache.dir
+D:/software_03/WWNapp/android/app/.cxx/Debug/p2o3b4k3/armeabi-v7a/CMakeFiles/rebuild_cache.dir

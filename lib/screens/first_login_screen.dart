@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'sign_up_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'home_screen.dart';
+import 'signup_preference_selection_screen.dart';
 
 class FirstLoginScreen extends StatefulWidget {
   const FirstLoginScreen({super.key});
@@ -21,7 +21,7 @@ class _FirstLoginScreenState extends State<FirstLoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
+          builder: (context) => const SignupPrefernceScreen(),
         ),
       );
     }
