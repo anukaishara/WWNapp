@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart'; // Import the ApiService
-import 'profile_screen.dart'; // Import the ProfileScreen
-import 'article_screen.dart'; // Import the ArticleScreen
-import 'menu_screen.dart'; // Import menu screen
+import '../services/api_service.dart';
+import 'profile_screen.dart';
+import 'article_screen.dart';
+import 'menu_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,13 +22,70 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, double> _scrollPositions = {};
 
+  final List<String> preloadCategories = [
+    "Top",
+    "Sports",
+    "Business",
+    "Technology",
+    "Politics",
+    "Entertainment",
+    "Others"
+  ];
+
+  final Map<String, String> categoryToQuery = {
+    "For you": "",
+    "Top": "news",
+    "Sports": "sports",
+    "Business": "business",
+    "Technology": "technology",
+    "Politics": "politics",
+    "Entertainment": "entertainment",
+    "Others": "world",
+  };
+
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _preloadAllCategories();
   }
 
-  Future<void> _fetchNews(String category) async {
+  Future<void> _preloadAllCategories() async {
+    setState(() {
+      isLoading = true;
+    });
+    for (final category in preloadCategories) {
+      final query = categoryToQuery[category] ?? 'news';
+      try {
+        final freshArticles = await ApiService.fetchAndDisplayArticles(query: query);
+        cachedNews[category] = freshArticles;
+      } catch (e) {
+        print('Error preloading $category: $e');
+      }
+    }
+    // Optionally, show "All" or the initial category if needed
+    if (_selectedCategory == "All") {
+      _showAllTabArticles();
+    } else if (preloadCategories.contains(_selectedCategory)) {
+      setState(() {
+        newsArticles = cachedNews[_selectedCategory] ?? [];
+      });
+    }
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  void _showAllTabArticles() {
+    final allArticles = <Map<String, dynamic>>[];
+    for (final cat in preloadCategories) {
+      allArticles.addAll(cachedNews[cat] ?? []);
+    }
+    setState(() {
+      newsArticles = allArticles;
+    });
+  }
+
+  Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
     // Save current scroll position before switching
     if (_scrollController.hasClients) {
       _scrollPositions[_selectedCategory] = _scrollController.position.pixels;
@@ -39,59 +96,28 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedCategory = category;
     });
 
-    final categoryToQuery = {
-      "For you": "",
-      "Top": "news",
-      "Sports": "sports",
-      "Business": "business",
-      "Technology": "technology",
-      "Politics": "politics",
-      "Entertainment": "entertainment",
-      "Others": "world",
-    };
-
     try {
       if (category == "All") {
-        final allArticles = <Map<String, dynamic>>[];
-        for (final cat in cachedNews.keys) {
-          if (cat != "For you" && cat != "All") {
-            allArticles.addAll(cachedNews[cat]!);
-          }
-        }
-        setState(() {
-          newsArticles = allArticles;
-        });
+        _showAllTabArticles();
       } else if (category == "For you") {
         setState(() {
           newsArticles = [];
         });
       } else {
+        // Show cached articles instantly unless forceRefresh
+        if (!forceRefresh && cachedNews.containsKey(category)) {
+          setState(() {
+            newsArticles = cachedNews[category] ?? [];
+          });
+        }
+
+        // Always fetch latest articles in background and update cache/UI
         final query = categoryToQuery[category] ?? 'news';
-
-        // 1. Show cached articles from Firestore first (if any)
-        final firestore = FirebaseFirestore.instance;
-        final collection = firestore.collection('articles');
-        final querySnapshot = await collection
-            .where('category', isEqualTo: query.toLowerCase().trim())
-            .orderBy('publishedAt', descending: true)
-            .get();
-        final cachedArticles = querySnapshot.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
-        setState(() {
-          newsArticles = cachedArticles;
-          cachedNews[category] = cachedArticles;
-        });
-
-        // 2. Fetch fresh articles from API and display instantly
-        final freshArticles =
-            await ApiService.fetchAndDisplayArticles(query: query);
+        final freshArticles = await ApiService.fetchAndDisplayArticles(query: query);
         setState(() {
           newsArticles = freshArticles;
           cachedNews[category] = freshArticles;
         });
-
-        // 3. Firestore saving happens in the background (handled by ApiService)
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,7 +131,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         isLoading = false;
       });
-      // Restore scroll position after build completes
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollPositions.containsKey(category)) {
           _scrollController.jumpTo(_scrollPositions[category]!);
@@ -175,7 +200,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Icon(Icons.cloud_upload, color: Colors.white),
         onPressed: () async {
           try {
-            // Example: fetch technology news and save
             await ApiService.fetchAndDisplayArticles(query: 'technology');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Articles fetched and saved!')),
@@ -263,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        await _fetchNews(_selectedCategory);
+        await _fetchNews(_selectedCategory, forceRefresh: true);
         _scrollController.jumpTo(0);
       },
       child: ListView.builder(
