@@ -1,6 +1,8 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ApiService {
   static const String apiKey = '0d2ecc02247c42369c263622a1d38ca7';
@@ -43,5 +45,57 @@ class ApiService {
     } else {
       throw Exception('Failed to fetch news from NewsAPI: ${response.statusCode}');
     }
+  }
+}
+
+// Add this new class to handle user-specific data
+class UserDataService {
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Save user preferences
+  static Future<void> saveUserPreferences(String userId, List<String> preferences) async {
+    await _firestore.collection('userData').doc(userId).set({
+      'preferences': preferences,
+      'lastUpdated': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  static Future<void> saveBookmark(String userId, String articleId) async {
+    await _firestore
+        .collection('userData')
+        .doc(userId)
+        .collection('bookmarks')
+        .doc(articleId)
+        .set({
+      'savedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+
+  // Remove bookmark for a user
+  static Future<void> removeBookmark(String userId, String articleUrl) async {
+    await _firestore
+        .collection('userData')
+        .doc(userId)
+        .collection('bookmarks')
+        .doc(articleUrl)
+        .delete();
+  }
+
+  // Get user preferences
+  static Future<List<String>> getUserPreferences(String userId) async {
+    final doc = await _firestore.collection('userData').doc(userId).get();
+
+
+    return List<String>.from(doc.data()?['preferences'] ?? []);
+  }
+
+  static Future<List<String>> getUserBookmarks(String userId) async {
+    final query = await _firestore
+        .collection('userData')
+        .doc(userId)
+        .collection('bookmarks')
+        .get();
+    return query.docs.map((doc) => doc.id).toList();
   }
 }

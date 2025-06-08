@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../Services/api_service.dart'; // This contains UserDataService
+
 
 class SignupPrefernceScreen extends StatefulWidget {
   const SignupPrefernceScreen({super.key});
@@ -12,8 +15,11 @@ class SignupPrefernceScreen extends StatefulWidget {
 class _SignupPrefernceScreenState extends State<SignupPrefernceScreen> {
   final List<String> preferences = ['Sports', 'Business', 'History', 'Technology'];
   Set<String> selectedPreferences = {};
-
   void _savePreferences() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await UserDataService.saveUserPreferences(user.uid, selectedPreferences.toList());
+    }
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('userPreferences', selectedPreferences.toList());
   }

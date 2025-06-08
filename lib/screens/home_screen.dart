@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../Services/api_service.dart'; // Import the ApiService
-import 'profile_screen.dart'; // Import the ProfileScreen
-import 'article_screen.dart'; // Import the ArticleScreen
-import 'menu_screen.dart'; // Import menu screen
-import 'search_screen.dart'; // Import menu screen
+import '../Services/api_service.dart';
+import 'profile_screen.dart';
+import 'article_screen.dart';
+import 'menu_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,34 +15,67 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, double> _scrollPositions = {};
+
   String _selectedCategory = "For you";
   List<dynamic> newsArticles = [];
   final Map<String, List<dynamic>> cachedNews = {};
   bool isLoading = false;
 
-  // Scroll position management
-  final ScrollController _scrollController = ScrollController();
-  final Map<String, double> _scrollPositions = {};
-
-
-/*
   @override
   void initState() {
     super.initState();
     _fetchNews(_selectedCategory);
   }
-    // Fetch news from the API based on the selected category
-*/
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
   }
+  Future<void> _saveBookmark(String articleUrl) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('userData')
+            .doc(user.uid)
+            .collection('bookmarks')
+            .doc(articleUrl)
+            .set({
+          'email': user.email,
+          'savedAt': FieldValue.serverTimestamp(),
+          'articleUrl': articleUrl,
+        });
+        await FirebaseFirestore.instance
+            .collection('userData')
+            .doc(user.uid)
+            .update({
+          'lastBookmarkSaved': FieldValue.serverTimestamp(),
+          'bookmarkCount': FieldValue.increment(1),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Article bookmarked!')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to bookmark: $e')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to bookmark articles')),
+      );
+    }
+  }
 
 
   Future<void> _fetchNews(String category) async {
-    // Save current scroll position before switching
+    // Save current scroll position
     if (_scrollController.hasClients) {
       _scrollPositions[_selectedCategory] = _scrollController.position.pixels;
     }
@@ -72,54 +106,68 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           newsArticles = allArticles;
         });
-      } else if (category == "For you") {
-        setState(() {
-          newsArticles = [];
-        });
-      } else {
+      }
+      else if (category == "For you") {
+        final user = _auth.currentUser;
+        if (user != null) {
+          final bookmarksSnapshot = await _firestore
+              .collection('userData')
+              .doc(user.uid)
+              .collection('bookmarks')
+              .get();
+
+          final bookmarkedUrls = bookmarksSnapshot.docs
+              .map((doc) => doc.data()['articleUrl'] as String)
+              .toList();
+
+          // Get user preferences or use default
+          final preferencesSnapshot = await _firestore
+              .collection('userData')
+              .doc(user.uid)
+              .get();
+
+          final preferences = preferencesSnapshot.exists
+              ? (preferencesSnapshot.data()?['preferences'] as List<dynamic>?)?.cast<String>() ?? ['news']
+              : ['news'];
+          // Simple recommendation logic
+          final querySnapshot = await _firestore
+              .collection('articles')
+              .where('category', whereIn: preferences.isNotEmpty ? preferences : ['news'])
+              .orderBy('publishedAt', descending: true)
+              .limit(20)
+              .get();
+
+          setState(() {
+            newsArticles = querySnapshot.docs.map((doc) => doc.data()).toList();
+          });
+        } else {
+          setState(() {
+            newsArticles = [];
+          });
+        }
+      }
+      else {
         final query = categoryToQuery[category] ?? 'news';
         if (cachedNews.containsKey(category)) {
           setState(() {
             newsArticles = cachedNews[category]!;
           });
         } else {
-          await ApiService.fetchAndSaveArticles(query: query); // Save to Firestore
+          await ApiService.fetchAndSaveArticles(query: query);
 
-          final firestore = FirebaseFirestore.instance;
-          final collection = firestore.collection('articles');
+          final querySnapshot = await _firestore
+              .collection('articles')
+              .where('category', isEqualTo: query)
+              .orderBy('publishedAt', descending: true)
+              .get();
 
-          try {
-            print("Fetching articles for category: $category");
+          final articles = querySnapshot.docs.map((doc) => doc.data()).toList();
+          cachedNews[category] = articles;
 
-            print("Fetching articles for category: '$category'");
-
-            final snapshot = await collection.get(); // Fetch all articles to inspect categories
-            for (var doc in snapshot.docs) {
-              print("Stored category in Firestore: '${doc['category']}'");
-            }
-
-// Now query Firestore using a standardized category
-            final querySnapshot = await collection
-                .where('category', isEqualTo: category.toLowerCase().trim()) // Ensure consistency
-                .orderBy('publishedAt', descending: true)
-                .get();
-
-            print("Fetched ${querySnapshot.docs.length} articles for category: '$category'");
-
-            final articles = querySnapshot.docs.map((doc) => doc.data()).toList();
-
-            cachedNews[category] = articles;
-
-            setState(() {
-              newsArticles = articles;
-            });
-
-          } catch (e) {
-            print("Error fetching articles from Firestore: $e");
-          }
+          setState(() {
+            newsArticles = articles;
+          });
         }
-
-
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,8 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         isLoading = false;
       });
-      
-      // Restore scroll position after build completes
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollPositions.containsKey(category)) {
           _scrollController.jumpTo(_scrollPositions[category]!);
@@ -159,15 +206,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white), // Menu icon
+          icon: const Icon(Icons.menu, color: Colors.white),
           onPressed: () {
-            // Navigate to menu screen
             Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const MenuScreen(),
-                ),
-              );
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MenuScreen(),
+              ),
+            );
           },
         ),
         actions: [
@@ -199,14 +245,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      
-      bottomNavigationBar: _buildCustomFooter(), // Replace BottomAppBar
+      bottomNavigationBar: _buildCustomFooter(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.red,
         child: const Icon(Icons.cloud_upload, color: Colors.white),
         onPressed: () async {
           try {
-            await ApiService.fetchAndSaveArticles(query: 'technology'); // You can change this
+            await ApiService.fetchAndSaveArticles(query: 'technology');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Articles saved to Firestore!')),
             );
@@ -217,13 +262,12 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
       ),
-      // Replace BottomAppBar
     );
   }
 
   Widget _buildCategoryFilters() {
     final categories = [
-      "For you", "All", "Top", "Sports", 
+      "For you", "All", "Top", "Sports",
       "Business", "History", "Technology", "Others"
     ];
 
@@ -304,9 +348,12 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => ArticleScreen(article: article),
-                  ),
+                    MaterialPageRoute(
+                      builder: (context) => ArticleScreen(
+                        article: article,
+                        onBookmark: _saveBookmark, // ← Pass it to ArticleScreen instead
+                      ),
+                    )
                 );
               },
               child: Card(
@@ -327,9 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: double.infinity,
                           fit: BoxFit.cover,
                           loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) {
-                              return child;
-                            }
+                            if (loadingProgress == null) return child;
                             return Container(
                               height: 200,
                               width: double.infinity,
@@ -379,9 +424,12 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => ArticleScreen(article: article),
-                ),
+                  MaterialPageRoute(
+                    builder: (context) => ArticleScreen(
+                      article: article,
+                      onBookmark: _saveBookmark, // ← Pass it to ArticleScreen instead
+                    ),
+                  )
               );
             },
             child: Card(
@@ -402,9 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 100,
                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) {
-                            return child;
-                          }
+                          if (loadingProgress == null) return child;
                           return Container(
                             height: 100,
                             width: 100,
@@ -478,30 +524,22 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: (index) {
         switch (index) {
           case 0:
-          // Stay on Home
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
             break;
           case 1:
-          // Navigate to Videos
-                      break;
+          // Handle Videos navigation
+            break;
           case 2:
-          // Navigate to Search
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SearchScreen()),
-          );
-
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SearchScreen()),
+            );
             break;
         }
       },
     );
   }
 }
-
-
-
-

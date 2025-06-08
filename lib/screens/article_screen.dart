@@ -1,24 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../Services/api_service.dart'; // This contains UserDataService
+
 
 class ArticleScreen extends StatefulWidget {
   final dynamic article;
+  final Function(String)? onBookmark;
 
-  const ArticleScreen({super.key, required this.article});
+
+  const ArticleScreen({
+    Key? key,
+    required this.article,
+    this.onBookmark,
+  }) : super(key: key);
 
   @override
   _ArticleScreenState createState() => _ArticleScreenState();
 }
 
 class _ArticleScreenState extends State<ArticleScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _fullContent = '';
   bool _isLoading = true;
+  bool _isBookmarked = false;
 
   @override
   void initState() {
     super.initState();
     _fetchFullContent();
+    _checkBookmarkStatus();
+    _isBookmarked = widget.article['isBookmarked'] ?? false;
+
+  }
+
+  Future<void> _checkBookmarkStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final bookmarks = await UserDataService.getUserBookmarks(user.uid);
+      setState(() {
+        _isBookmarked = bookmarks.contains(widget.article['url']);
+      });
+    }
+  }
+  Future<void> _toggleBookmark() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (_isBookmarked) {
+        await UserDataService.removeBookmark(user.uid, widget.article['url']);
+      } else {
+        await UserDataService.saveBookmark(user.uid, widget.article['url']);
+      }
+      setState(() {
+        _isBookmarked = !_isBookmarked;
+      });
+      if (widget.onBookmark != null && widget.article['url'] != null) {
+        widget.onBookmark!(widget.article['url']);
+      }
+    }
   }
 
   Future<void> _fetchFullContent() async {
@@ -59,10 +100,11 @@ class _ArticleScreenState extends State<ArticleScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bookmark_border, color: Colors.white),
-            onPressed: () {
-              // Bookmark icon
-            },
+            icon: Icon(
+              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              color: Colors.white,
+            ),
+            onPressed: _toggleBookmark,
           ),
         ],
         bottom: const PreferredSize(
