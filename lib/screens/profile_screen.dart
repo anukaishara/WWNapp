@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'bookmark_screen.dart'; 
+import 'History_screen.dart'; 
 import 'package:wwn_app/screens/set_preferences_screen.dart';
-
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -63,124 +63,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-
                     child: Text(
-                         _name,
-                        style: const TextStyle(
-                        fontSize: 24, // Increased font size for name
-                        fontWeight: FontWeight.bold, // Bold text
+                      _name,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 32),
-              // Profile options
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Reset Password
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Reset Password',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
+                  _buildProfileOption('Reset Password'),
                   // Set Preferences
-                   GestureDetector(
-                         onTap: () {
-                         Navigator.push(
-                         context,
-                         MaterialPageRoute(builder: (context) => const PreferencesScreen()),
-                         );
-                        },
-                     child: Container(
-                     padding: const EdgeInsets.all(16),
-                     margin: const EdgeInsets.only(bottom: 8),
-                     decoration: BoxDecoration(
-                     color: Colors.grey[200],
-                     borderRadius: BorderRadius.circular(10),
-                   ),
-                     child: const Text(
-                    'Set Preferences',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.black,
-                    ),
-                  ),
-                 ),
-                ),
-                  // Manage Privacy
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Manage Privacy',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  // Bookmarks
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const BookmarkScreen()),
+                        MaterialPageRoute(builder: (context) => const PreferencesScreen()),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        'Bookmarks',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
+                    child: _buildProfileOption('Set Preferences'),
+                  ),
+                  // Manage Privacy
+                  _buildProfileOption('Manage Privacy'),
+                  // Bookmarks (updated)
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BookmarkScreen(),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                    child: _buildProfileOption('Bookmarks'),
+                  ),
+                  // History
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                      );
+                    },
+                    child: _buildProfileOption('History'),
                   ),
                   // Logout
                   GestureDetector(
                     onTap: () => _showLogoutConfirmation(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        'Logout',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
+                    child: _buildProfileOption('Logout'),
                   ),
                 ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileOption(String label) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 20,
+          color: Colors.black,
         ),
       ),
     );

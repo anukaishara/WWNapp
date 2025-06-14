@@ -21,5 +21,6 @@ class MyApp extends StatelessWidget {
       ),
       home: const TitleScreen(), // Start with the TitleScreen
     );
+    
   }
 }

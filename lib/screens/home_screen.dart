@@ -1,11 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart'; // Make sure the path/case matches your project
+import '../services/api_service.dart';
 import 'profile_screen.dart';
 import 'article_screen.dart';
 import 'menu_screen.dart';
 import 'search_screen.dart';
+import 'bookmark_screen.dart'; // ✅ Import
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = "For you";
   List<Map<String, dynamic>> newsArticles = [];
   final Map<String, List<Map<String, dynamic>>> cachedNews = {};
+  List<Map<String, dynamic>> _bookmarkedArticles = [];
   bool isLoading = false;
 
   final ScrollController _scrollController = ScrollController();
@@ -29,8 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     "Business",
     "Technology",
     "Politics",
-    "Entertainment",
-    "Others"
+    "Entertainment"
   ];
 
   final Map<String, String> categoryToQuery = {
@@ -40,50 +42,30 @@ class _HomeScreenState extends State<HomeScreen> {
     "Business": "business",
     "Technology": "technology",
     "Politics": "politics",
-    "Entertainment": "entertainment",
-    "Others": "world",
+    "Entertainment": "entertainment"
   };
 
   @override
   void initState() {
     super.initState();
-    _preloadAllCategories();
+    loadBookmarkedArticles();
   }
 
-  Future<void> _preloadAllCategories() async {
+  Future<void> loadBookmarkedArticles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList('bookmarked_articles') ?? [];
     setState(() {
-      isLoading = true;
-    });
-    for (final category in preloadCategories) {
-      final query = categoryToQuery[category] ?? 'news';
-      try {
-        final freshArticles = await ApiService.fetchAndDisplayArticles(query: query);
-        cachedNews[category] = freshArticles;
-      } catch (e) {
-        print('Error preloading $category: $e');
-      }
-    }
-    // Show "All" or initial category if needed
-    if (_selectedCategory == "All") {
-      _showAllTabArticles();
-    } else if (preloadCategories.contains(_selectedCategory)) {
-      setState(() {
-        newsArticles = cachedNews[_selectedCategory] ?? [];
-      });
-    }
-    setState(() {
-      isLoading = false;
+      _bookmarkedArticles = data
+          .map((json) => jsonDecode(json) as Map<String, dynamic>)
+          .toList();
     });
   }
 
-  void _showAllTabArticles() {
-    final allArticles = <Map<String, dynamic>>[];
-    for (final cat in preloadCategories) {
-      allArticles.addAll(cachedNews[cat] ?? []);
-    }
-    setState(() {
-      newsArticles = allArticles;
-    });
+  Future<void> _saveBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> jsonBookmarks =
+        _bookmarkedArticles.map((item) => json.encode(item)).toList();
+    await prefs.setStringList('bookmarked_articles', jsonBookmarks);
   }
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
@@ -100,18 +82,13 @@ class _HomeScreenState extends State<HomeScreen> {
       if (category == "All") {
         _showAllTabArticles();
       } else if (category == "For you") {
-        setState(() {
-          newsArticles = [];
-        });
+        setState(() => newsArticles = []);
       } else {
-        // Show cached articles instantly unless forceRefresh
         if (!forceRefresh && cachedNews.containsKey(category)) {
           setState(() {
             newsArticles = cachedNews[category] ?? [];
           });
         }
-
-        // Always fetch latest articles in background and update cache/UI
         final query = categoryToQuery[category] ?? 'news';
         final freshArticles = await ApiService.fetchAndDisplayArticles(query: query);
         setState(() {
@@ -121,15 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to fetch news: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Failed to fetch news: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollPositions.containsKey(category)) {
           _scrollController.jumpTo(_scrollPositions[category]!);
@@ -140,16 +112,35 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showAllTabArticles() {
+    final allArticles = <Map<String, dynamic>>[];
+    for (final cat in preloadCategories) {
+      allArticles.addAll(cachedNews[cat] ?? []);
+    }
+    setState(() => newsArticles = allArticles);
+  }
+
+  bool isBookmarked(Map<String, dynamic> article) {
+    return _bookmarkedArticles.any((item) => item['title'] == article['title']);
+  }
+
+  Future<void> toggleBookmark(Map<String, dynamic> article) async {
+    setState(() {
+      if (isBookmarked(article)) {
+        _bookmarkedArticles.removeWhere((item) => item['title'] == article['title']);
+      } else {
+        _bookmarkedArticles.add(article);
+      }
+    });
+    await _saveBookmarks();
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
         if (_scrollController.hasClients && _scrollController.offset > 0) {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
+          _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
           return false;
         } else {
           SystemNavigator.pop();
@@ -159,35 +150,25 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.red,
-          title: const Text(
-            'WWN',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          title: const Text('WWN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const MenuScreen(),
-                ),
-              );
-            },
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MenuScreen())),
           ),
           actions: [
             IconButton(
               icon: const Icon(Icons.person, color: Colors.white),
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final updated = await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfileScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
+
+                if (updated == true) {
+                  await loadBookmarkedArticles(); // ✅ Refresh bookmarks if ProfileScreen triggers changes
+                  setState(() {});
+                }
               },
             ),
           ],
@@ -195,89 +176,38 @@ class _HomeScreenState extends State<HomeScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              Container(
-                height: 10,
-                color: Colors.white,
-              ),
               const SizedBox(height: 8),
               _buildCategoryFilters(),
-              Expanded(
-                child: _buildNewsContent(),
-              ),
+              Expanded(child: _buildNewsContent()),
             ],
           ),
         ),
         bottomNavigationBar: _buildCustomFooter(),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: Colors.red,
-          child: const Icon(Icons.cloud_upload, color: Colors.white),
-          onPressed: () async {
-            try {
-              await ApiService.fetchAndDisplayArticles(query: 'technology');
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Articles fetched and saved!')),
-              );
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error fetching articles: $e')),
-              );
-            }
-          },
-        ),
       ),
     );
   }
 
   Widget _buildCategoryFilters() {
-    final categories = [
-      "For you",
-      "All",
-      "Top",
-      "Sports",
-      "Business",
-      "Technology",
-      "Politics",
-      "Entertainment",
-      "Others"
-    ];
-
+    final categories = ["For you", "All", ...preloadCategories];
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(8),
       child: SizedBox(
-        height: 40.0,
+        height: 40,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           itemCount: categories.length,
           itemBuilder: (context, index) {
             final category = categories[index];
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: ElevatedButton(
                 onPressed: () {
-                  if (_selectedCategory != category) {
-                    _fetchNews(category);
-                  }
+                  if (_selectedCategory != category) _fetchNews(category);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedCategory == category
-                      ? Colors.white
-                      : Colors.red,
-                  foregroundColor: _selectedCategory == category
-                      ? Colors.black
-                      : Colors.white,
-                  side: BorderSide(
-                    color: _selectedCategory == category
-                        ? Colors.black
-                        : Colors.red,
-                    width: 1.0,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
+                  backgroundColor: _selectedCategory == category ? Colors.white : Colors.red,
+                  foregroundColor: _selectedCategory == category ? Colors.black : Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
                 child: Text(category),
               ),
@@ -290,189 +220,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNewsContent() {
     if (isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(
-              color: Colors.red,
-              strokeWidth: 4,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Loading $_selectedCategory news...',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      );
+      return const Center(child: CircularProgressIndicator(color: Colors.red));
     }
     if (newsArticles.isEmpty) {
-      return const Center(
-        child: Text('No news available'),
-      );
+      return const Center(child: Text('No news available'));
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await _fetchNews(_selectedCategory, forceRefresh: true);
-        _scrollController.jumpTo(0);
-      },
+      onRefresh: () async => await _fetchNews(_selectedCategory, forceRefresh: true),
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.only(bottom: 60),
         itemCount: newsArticles.length,
         itemBuilder: (context, index) {
           final article = newsArticles[index];
-
-          if (index == 0) {
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ArticleScreen(article: article),
-                  ),
-                );
-              },
-              child: Card(
-                margin:
-                    const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                elevation: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (article['urlToImage'] != null &&
-                        article['urlToImage'].isNotEmpty)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(12.0)),
-                        child: Image.network(
-                          article['urlToImage'],
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              height: 200,
-                              width: double.infinity,
-                              color: Colors.grey[300],
-                              child: const Center(
-                                  child: CircularProgressIndicator()),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              height: 200,
-                              width: double.infinity,
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.error, color: Colors.red),
-                            );
-                          },
-                        ),
-                      )
-                    else
-                      Container(
-                        height: 200,
-                        width: double.infinity,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.image, color: Colors.white),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            article['title'] ?? 'No Title',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
+          final bookmarked = isBookmarked(article);
 
           return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ArticleScreen(article: article),
-                ),
-              );
-            },
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ArticleScreen(article: article))),
             child: Card(
-              margin:
-                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0),
-              ),
+              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
               elevation: 4,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (article['urlToImage'] != null &&
-                      article['urlToImage'].isNotEmpty)
+                  if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
                     ClipRRect(
-                      borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(12.0)),
-                      child: Image.network(
-                        article['urlToImage'],
-                        height: 100,
-                        width: 100,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: 100,
-                            width: 100,
-                            color: Colors.grey[300],
-                            child: const Center(
-                                child: CircularProgressIndicator()),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            height: 100,
-                            width: 100,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.error, color: Colors.red),
-                          );
-                        },
-                      ),
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12.0)),
+                      child: Image.network(article['urlToImage'], height: 100, width: 100, fit: BoxFit.cover),
                     )
                   else
-                    Container(
-                      height: 100,
-                      width: 100,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.image, color: Colors.white),
-                    ),
+                    Container(height: 100, width: 100, color: Colors.grey[300], child: const Icon(Icons.image)),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            article['title'] ?? 'No Title',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          Text(article['title'] ?? 'No Title', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: IconButton(
+                              icon: Icon(
+                                bookmarked ? Icons.star : Icons.star_border,
+                                color: bookmarked ? Colors.yellow[700] : Colors.grey,
+                              ),
+                              onPressed: () => toggleBookmark(article),
                             ),
                           ),
                         ],
@@ -494,35 +289,14 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.white70,
       items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.video_library),
-          label: 'Videos',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.search),
-          label: 'Search',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.video_library), label: 'Videos'),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
       ],
       currentIndex: 0,
       onTap: (index) {
-        switch (index) {
-          case 0:
-            // Stay on Home
-            break;
-          case 1:
-            // Navigate to Videos
-            break;
-          case 2:
-            // Navigate to Search
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const SearchScreen()),
-            );
-            break;
+        if (index == 2) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
         }
       },
     );

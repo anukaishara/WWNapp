@@ -1,12 +1,24 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ArticleScreen extends StatefulWidget {
-  final dynamic article;
+  
+  final Map<String, dynamic> article;
+  final bool isBookmarked; 
+  final VoidCallback? onBookmarkToggle;
 
-  const ArticleScreen({super.key, required this.article});
+  
+  const ArticleScreen({
+    super.key,
+    required this.article,
+    this.isBookmarked = false, 
+    this.onBookmarkToggle,     
+  });
 
+  
   @override
   _ArticleScreenState createState() => _ArticleScreenState();
 }
@@ -14,11 +26,14 @@ class ArticleScreen extends StatefulWidget {
 class _ArticleScreenState extends State<ArticleScreen> {
   String _fullContent = '';
   bool _isLoading = true;
+  bool _isBookmarked = false;
+  List<Map<String, dynamic>> _bookmarkedArticles = [];
 
   @override
   void initState() {
     super.initState();
     _fetchFullContent();
+    _loadBookmarks();
   }
 
   Future<void> _fetchFullContent() async {
@@ -47,10 +62,39 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
+  Future<void> _loadBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bookmarkedData = prefs.getStringList('bookmarked_articles') ?? [];
+
+    setState(() {
+      _bookmarkedArticles = bookmarkedData
+          .map((json) => jsonDecode(json) as Map<String, dynamic>)
+          .toList();
+
+      _isBookmarked = _bookmarkedArticles.any((item) => item['title'] == widget.article['title']);
+    });
+  }
+
+  Future<void> _toggleBookmark() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _isBookmarked = !_isBookmarked;
+      if (_isBookmarked) {
+        _bookmarkedArticles.add(widget.article);
+      } else {
+        _bookmarkedArticles.removeWhere((item) => item['title'] == widget.article['title']);
+      }
+    });
+
+    final bookmarkedData = _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
+    await prefs.setStringList('bookmarked_articles', bookmarkedData);
+    await prefs.setStringList('bookmarks', bookmarkedData); // Also update the 'bookmarks' key used in HomeScreen
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //  red AppBar 
       appBar: AppBar(
         backgroundColor: Colors.red,
         leading: IconButton(
@@ -59,10 +103,11 @@ class _ArticleScreenState extends State<ArticleScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bookmark_border, color: Colors.white),
-            onPressed: () {
-              // Bookmark icon
-            },
+            icon: Icon(
+              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              color: Colors.white,
+            ),
+            onPressed: _toggleBookmark,
           ),
         ],
         bottom: const PreferredSize(
@@ -70,8 +115,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
           child: Divider(color: Colors.white, height: 10, thickness: 10),
         ),
       ),
-
-      
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -102,61 +145,39 @@ class _ArticleScreenState extends State<ArticleScreen> {
             const SizedBox(height: 16),
             Text(
               widget.article['title'] ?? 'No Title',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               widget.article['publishedAt'] != null
                   ? 'Published on: ${_formatDate(widget.article['publishedAt'])}'
                   : '',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 16),
             Text(
               widget.article['description'] ?? 'No Description',
-              style: const TextStyle(
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : Text(
                     _fullContent,
-                    style: const TextStyle(
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(fontSize: 16),
                   ),
           ],
         ),
       ),
-
-      // Bottom Navigation Bar 
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.red,
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.white70,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.video_library),
-            label: 'Videos',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.video_library), label: 'Videos'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
         ],
-        
       ),
     );
   }
