@@ -4,7 +4,6 @@ import 'profile_screen.dart';
 import 'article_screen.dart';
 import 'menu_screen.dart';
 import 'search_screen.dart';
-import 'bookmark_screen.dart'; // ✅ Import
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -17,7 +16,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _selectedCategory = "For you";
+  String _selectedMainCategory = "For you";
+  String? _selectedSubCategory;
   List<Map<String, dynamic>> newsArticles = [];
   final Map<String, List<Map<String, dynamic>>> cachedNews = {};
   List<Map<String, dynamic>> _bookmarkedArticles = [];
@@ -26,23 +26,18 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, double> _scrollPositions = {};
 
-  final List<String> preloadCategories = [
-    "Top",
-    "Sports",
-    "Business",
-    "Technology",
-    "Politics",
-    "Entertainment"
-  ];
+  final Map<String, List<String>> mainToSubCategories = {
+    "Local": ["Top", "Business", "Sports", "Entertainment", "Technology"],
+    "Foreign": ["Top", "Sports", "Business", "Technology", "Politics", "Entertainment"],
+  };
 
   final Map<String, String> categoryToQuery = {
-    "For you": "",
     "Top": "news",
     "Sports": "sports",
     "Business": "business",
     "Technology": "technology",
     "Politics": "politics",
-    "Entertainment": "entertainment"
+    "Entertainment": "entertainment",
   };
 
   @override
@@ -55,9 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getStringList('bookmarked_articles') ?? [];
     setState(() {
-      _bookmarkedArticles = data
-          .map((json) => jsonDecode(json) as Map<String, dynamic>)
-          .toList();
+      _bookmarkedArticles =
+          data.map((json) => jsonDecode(json) as Map<String, dynamic>).toList();
     });
   }
 
@@ -70,18 +64,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
     if (_scrollController.hasClients) {
-      _scrollPositions[_selectedCategory] = _scrollController.position.pixels;
+      _scrollPositions[_selectedSubCategory ?? "For you"] =
+          _scrollController.position.pixels;
     }
 
     setState(() {
       isLoading = true;
-      _selectedCategory = category;
     });
 
     try {
-      if (category == "All") {
-        _showAllTabArticles();
-      } else if (category == "For you") {
+      if (_selectedMainCategory == "For you") {
         setState(() => newsArticles = []);
       } else {
         if (!forceRefresh && cachedNews.containsKey(category)) {
@@ -90,7 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
         final query = categoryToQuery[category] ?? 'news';
-        final freshArticles = await ApiService.fetchAndDisplayArticles(query: query);
+        final freshArticles =
+            await ApiService.fetchAndDisplayArticles(query: query);
         setState(() {
           newsArticles = freshArticles;
           cachedNews[category] = freshArticles;
@@ -98,13 +91,16 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch news: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Failed to fetch news: $e'),
+            backgroundColor: Colors.red),
       );
     } finally {
       setState(() => isLoading = false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollPositions.containsKey(category)) {
-          _scrollController.jumpTo(_scrollPositions[category]!);
+        final key = _selectedSubCategory ?? "For you";
+        if (_scrollPositions.containsKey(key)) {
+          _scrollController.jumpTo(_scrollPositions[key]!);
         } else {
           _scrollController.jumpTo(0);
         }
@@ -112,22 +108,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showAllTabArticles() {
-    final allArticles = <Map<String, dynamic>>[];
-    for (final cat in preloadCategories) {
-      allArticles.addAll(cachedNews[cat] ?? []);
-    }
-    setState(() => newsArticles = allArticles);
-  }
-
   bool isBookmarked(Map<String, dynamic> article) {
-    return _bookmarkedArticles.any((item) => item['title'] == article['title']);
+    return _bookmarkedArticles
+        .any((item) => item['title'] == article['title']);
   }
 
   Future<void> toggleBookmark(Map<String, dynamic> article) async {
     setState(() {
       if (isBookmarked(article)) {
-        _bookmarkedArticles.removeWhere((item) => item['title'] == article['title']);
+        _bookmarkedArticles
+            .removeWhere((item) => item['title'] == article['title']);
       } else {
         _bookmarkedArticles.add(article);
       }
@@ -140,7 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return WillPopScope(
       onWillPop: () async {
         if (_scrollController.hasClients && _scrollController.offset > 0) {
-          _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+          _scrollController.animateTo(0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut);
           return false;
         } else {
           SystemNavigator.pop();
@@ -150,11 +142,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.red,
-          title: const Text('WWN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text('WWN',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MenuScreen())),
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const MenuScreen())),
           ),
           actions: [
             IconButton(
@@ -166,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
 
                 if (updated == true) {
-                  await loadBookmarkedArticles(); // ✅ Refresh bookmarks if ProfileScreen triggers changes
+                  await loadBookmarkedArticles();
                   setState(() {});
                 }
               },
@@ -188,33 +183,90 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryFilters() {
-    final categories = ["For you", "All", ...preloadCategories];
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: SizedBox(
-        height: 40,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_selectedCategory != category) _fetchNews(category);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedCategory == category ? Colors.white : Colors.red,
-                  foregroundColor: _selectedCategory == category ? Colors.black : Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    final mainCategories = ["For you", "Local", "Foreign"];
+    final subCategories = mainToSubCategories[_selectedMainCategory] ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 40,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: mainCategories.length,
+            itemBuilder: (context, index) {
+              final mainCat = mainCategories[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedMainCategory = mainCat;
+                      _selectedSubCategory = null;
+                      if (mainCat == "For you") {
+                        newsArticles = [];
+                      } else {
+                        final firstSub = mainToSubCategories[mainCat]!.first;
+                        _selectedSubCategory = firstSub;
+                        _fetchNews(firstSub);
+                      }
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _selectedMainCategory == mainCat
+                        ? Colors.white
+                        : Colors.red,
+                    foregroundColor: _selectedMainCategory == mainCat
+                        ? Colors.black
+                        : Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                  ),
+                  child: Text(mainCat),
                 ),
-                child: Text(category),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
-      ),
+        if (_selectedMainCategory != "For you")
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: SizedBox(
+              height: 40,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: subCategories.length,
+                itemBuilder: (context, index) {
+                  final subCat = subCategories[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (_selectedSubCategory != subCat) {
+                          setState(() {
+                            _selectedSubCategory = subCat;
+                          });
+                          _fetchNews(subCat);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _selectedSubCategory == subCat
+                            ? Colors.white
+                            : Colors.red,
+                        foregroundColor: _selectedSubCategory == subCat
+                            ? Colors.black
+                            : Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text(subCat),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -227,7 +279,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () async => await _fetchNews(_selectedCategory, forceRefresh: true),
+      onRefresh: () async =>
+          await _fetchNews(_selectedSubCategory ?? "Top", forceRefresh: true),
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.only(bottom: 60),
@@ -237,35 +290,53 @@ class _HomeScreenState extends State<HomeScreen> {
           final bookmarked = isBookmarked(article);
 
           return GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ArticleScreen(article: article))),
+            onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => ArticleScreen(article: article))),
             child: Card(
-              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+              margin:
+                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0)),
               elevation: 4,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (article['urlToImage'] != null && article['urlToImage'].isNotEmpty)
+                  if (article['urlToImage'] != null &&
+                      article['urlToImage'].isNotEmpty)
                     ClipRRect(
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12.0)),
-                      child: Image.network(article['urlToImage'], height: 100, width: 100, fit: BoxFit.cover),
+                      borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(12.0)),
+                      child: Image.network(article['urlToImage'],
+                          height: 100, width: 100, fit: BoxFit.cover),
                     )
                   else
-                    Container(height: 100, width: 100, color: Colors.grey[300], child: const Icon(Icons.image)),
+                    Container(
+                        height: 100,
+                        width: 100,
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image)),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(article['title'] ?? 'No Title', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(article['title'] ?? 'No Title',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           Align(
                             alignment: Alignment.bottomRight,
                             child: IconButton(
                               icon: Icon(
-                                bookmarked ? Icons.star : Icons.star_border,
-                                color: bookmarked ? Colors.yellow[700] : Colors.grey,
+                                bookmarked
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color: bookmarked
+                                    ? Colors.yellow[700]
+                                    : Colors.grey,
                               ),
                               onPressed: () => toggleBookmark(article),
                             ),
@@ -296,7 +367,8 @@ class _HomeScreenState extends State<HomeScreen> {
       currentIndex: 0,
       onTap: (index) {
         if (index == 2) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
+          Navigator.push(
+              context, MaterialPageRoute(builder: (_) => const SearchScreen()));
         }
       },
     );
