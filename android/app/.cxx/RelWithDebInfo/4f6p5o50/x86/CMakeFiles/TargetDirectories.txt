@@ -1,0 +1,2 @@
+C:/Flutter Apps/WWNapp/android/app/.cxx/RelWithDebInfo/4f6p5o50/x86/CMakeFiles/edit_cache.dir
+C:/Flutter Apps/WWNapp/android/app/.cxx/RelWithDebInfo/4f6p5o50/x86/CMakeFiles/rebuild_cache.dir

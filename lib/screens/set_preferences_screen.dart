@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'signup_preference_selection_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferencesScreen extends StatefulWidget {

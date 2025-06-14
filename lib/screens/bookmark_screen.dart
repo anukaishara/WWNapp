@@ -13,8 +13,7 @@ class BookmarkScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-      ),
-      
+      ), 
     );
   }
 }
