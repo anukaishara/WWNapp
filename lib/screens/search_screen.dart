@@ -25,7 +25,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 187, 51, 41), // Match the theme color
+        backgroundColor: const Color.fromARGB(255, 244, 67, 54), // Match the theme color
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
