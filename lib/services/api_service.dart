@@ -18,7 +18,7 @@ class NewsApiOrgProvider implements NewsApiProvider {
   @override
   Future<List<Map<String, dynamic>>> fetchArticles({String query = 'news'}) async {
     final url = Uri.parse(
-      'https://newsapi.org/v2/everything?q=$query&apiKey=$apiKey&sortBy=publishedAt',
+      'https://newsapi.org/v2/everything?q=$query&language=en&apiKey=$apiKey&sortBy=publishedAt',
     );
     final response = await http.get(url);
     if (response.statusCode == 200) {
@@ -35,154 +35,6 @@ class NewsApiOrgProvider implements NewsApiProvider {
       }).toList();
     } else {
       throw Exception('Failed to fetch news from NewsAPI: ${response.statusCode}');
-    }
-  }
-}
-
-/// World News API
-class WorldNewsApiProvider implements NewsApiProvider {
-  static const String apiKey = 'c380091d738941968aeaeea942d64e18';
-
-  @override
-  String get sourceName => "WorldNewsAPI";
-
-  @override
-  Future<List<Map<String, dynamic>>> fetchArticles({String query = 'news'}) async {
-    final categoryMap = {
-      'sports': 'sports',
-      'business': 'business',
-      'technology': 'technology',
-      'politics': 'politics',
-      'entertainment': 'entertainment',
-      'world': 'world',
-      'news': '',
-    };
-    final worldNewsCategory = categoryMap[query.toLowerCase()] ?? '';
-
-    final params = {
-      'api-key': apiKey,
-      'number': '30',
-      'language': 'en',
-      if (worldNewsCategory.isNotEmpty) 'categories': worldNewsCategory,
-      if (query.isNotEmpty && worldNewsCategory.isEmpty) 'text': query,
-      'sort': 'publish-time',
-      'sort-direction': 'desc',
-    };
-    final uri = Uri.https('api.worldnewsapi.com', '/api/v1/news', params);
-
-    final response = await http.get(uri);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final articles = data['news'] as List<dynamic>? ?? [];
-      return articles.map((article) => {
-        'title': article['title'],
-        'description': article['text'],
-        'url': article['url'],
-        'urlToImage': article['image'],
-        'publishedAt': article['publish_date'],
-        'content': article['text'],
-        'source': article['source']['title'],
-      }).toList();
-    } else {
-      throw Exception('Failed to fetch news from WorldNewsAPI: ${response.statusCode}');
-    }
-  }
-}
-
-/// TheNewsAPI
-class TheNewsApiProvider implements NewsApiProvider {
-  static const String apiKey = '9zbNyzlS8WyT8JRanPHp8WLjbbQKPBxRila4d5gm';
-
-  @override
-  String get sourceName => "TheNewsAPI";
-
-  @override
-  Future<List<Map<String, dynamic>>> fetchArticles({String query = 'news'}) async {
-    final categoryMap = {
-      'sports': 'sports',
-      'business': 'business',
-      'technology': 'technology',
-      'politics': 'politics',
-      'entertainment': 'entertainment',
-      'world': 'world',
-      'news': '',
-    };
-    final theNewsApiCategory = categoryMap[query.toLowerCase()] ?? '';
-
-    final params = {
-      'api_token': apiKey,
-      'language': 'en',
-      'search': query,
-      'limit': '30',
-      if (theNewsApiCategory.isNotEmpty) 'category': theNewsApiCategory,
-    };
-    final uri = Uri.https('api.thenewsapi.com', '/v1/news/all', params);
-
-    final response = await http.get(uri);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final articles = data['data'] as List<dynamic>? ?? [];
-      return articles.map((article) => {
-        'title': article['title'],
-        'description': article['description'],
-        'url': article['url'],
-        'urlToImage': article['image_url'],
-        'publishedAt': article['published_at'],
-        'content': article['snippet'],
-        'source': article['source'],
-      }).toList();
-    } else {
-      throw Exception('Failed to fetch news from TheNewsAPI: ${response.statusCode}');
-    }
-  }
-}
-
-/// NewsData.io
-class NewsDataIoProvider implements NewsApiProvider {
-  static const String apiKey = 'pub_6580414afc87d4733c4607b8a544a03698fbd';
-
-  @override
-  String get sourceName => "NewsData.io";
-
-  @override
-  Future<List<Map<String, dynamic>>> fetchArticles({String query = 'news'}) async {
-    final categoryMap = {
-      'sports': 'sports',
-      'business': 'business',
-      'technology': 'technology',
-      'politics': 'politics',
-      'entertainment': 'entertainment',
-      'world': 'world',
-      'news': '',
-    };
-    final newsDataCategory = categoryMap[query.toLowerCase()] ?? '';
-
-    final params = {
-      'apikey': apiKey,
-      'language': 'en',
-      'q': query,
-      'country': 'us',
-      if (newsDataCategory.isNotEmpty) 'category': newsDataCategory,
-      'page': '0',
-      'size': '30',
-    };
-    final uri = Uri.https('newsdata.io', '/api/1/news', params);
-
-    final response = await http.get(uri);
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final articles = data['results'] as List<dynamic>? ?? [];
-      return articles.map((article) => {
-        'title': article['title'],
-        'description': article['description'],
-        'url': article['link'],
-        'urlToImage': article['image_url'],
-        'publishedAt': article['pubDate'],
-        'content': article['content'],
-        'source': article['source_id'],
-      }).toList();
-    } else {
-      throw Exception('Failed to fetch news from NewsData.io: ${response.statusCode}');
     }
   }
 }
@@ -258,9 +110,6 @@ class NewsAggregator {
 class ApiService {
   static final NewsAggregator aggregator = NewsAggregator([
     NewsApiOrgProvider(),
-    WorldNewsApiProvider(),
-    TheNewsApiProvider(),
-    NewsDataIoProvider(),
     GNewsProvider(),
   ]);
 

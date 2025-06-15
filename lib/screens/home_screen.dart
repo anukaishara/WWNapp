@@ -7,6 +7,7 @@ import 'search_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../services/scraping.dart'; // Make sure this has scrapeLocalCategory
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -75,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       if (_selectedMainCategory == "For you") {
         setState(() => newsArticles = []);
-      } else {
+      } else if (_selectedMainCategory == "Foreign") {
         if (!forceRefresh && cachedNews.containsKey(category)) {
           setState(() {
             newsArticles = cachedNews[category] ?? [];
@@ -87,6 +88,12 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           newsArticles = freshArticles;
           cachedNews[category] = freshArticles;
+        });
+      } else if (_selectedMainCategory == "Local") {
+        // --- Use new scraping logic for Local ---
+        final scrapedArticles = await scrapeLocalCategory(category);
+        setState(() {
+          newsArticles = scrapedArticles;
         });
       }
     } catch (e) {
@@ -277,7 +284,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (newsArticles.isEmpty) {
       return const Center(child: Text('No news available'));
     }
-
     return RefreshIndicator(
       onRefresh: () async =>
           await _fetchNews(_selectedSubCategory ?? "Top", forceRefresh: true),
@@ -325,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Text(article['title'] ?? 'No Title',
                               style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
+                                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                           const SizedBox(height: 8),
                           Align(
                             alignment: Alignment.bottomRight,

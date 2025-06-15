@@ -18,7 +18,11 @@ dependencies:
   google_sign_in: ^6.1.4
   flutter_facebook_auth: ^6.2.0
   shared_preferences: ^2.0.15
-  mailer: ^5.0.0
+  mailer: ^6.4.1
+  http: ^1.2.0
+  rss_dart: ^1.0.13
+  html_tags_cleaner: ^0.0.3
+  url_launcher: ^6.1.10
 
 dev_dependencies:
   flutter_test:

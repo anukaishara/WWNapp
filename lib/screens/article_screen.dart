@@ -1,24 +1,21 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' as html;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/scraping.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ArticleScreen extends StatefulWidget {
-  
   final Map<String, dynamic> article;
-  final bool isBookmarked; 
+  final bool isBookmarked;
   final VoidCallback? onBookmarkToggle;
 
-  
   const ArticleScreen({
     super.key,
     required this.article,
-    this.isBookmarked = false, 
-    this.onBookmarkToggle,     
+    this.isBookmarked = false,
+    this.onBookmarkToggle,
   });
 
-  
   @override
   _ArticleScreenState createState() => _ArticleScreenState();
 }
@@ -38,20 +35,20 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
   Future<void> _fetchFullContent() async {
     try {
-      final response = await http.get(Uri.parse(widget.article['url']));
-      if (response.statusCode == 200) {
-        final document = html.parse(response.body);
-        final content = document.querySelector('article')?.text ?? 'No content available';
-        setState(() {
-          _fullContent = content;
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load full content');
-      }
+      String? fullContentFromRss = widget.article['fullContent'];
+      final content = await fetchFullArticleContent(
+        widget.article['url'],
+        category: widget.article['category'],
+        fullContent: fullContentFromRss,
+      );
+      setState(() {
+        _fullContent = content.trim();
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _isLoading = false;
+        _fullContent = '';
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -65,12 +62,10 @@ class _ArticleScreenState extends State<ArticleScreen> {
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     final bookmarkedData = prefs.getStringList('bookmarked_articles') ?? [];
-
     setState(() {
       _bookmarkedArticles = bookmarkedData
           .map((json) => jsonDecode(json) as Map<String, dynamic>)
           .toList();
-
       _isBookmarked = _bookmarkedArticles.any((item) => item['title'] == widget.article['title']);
     });
   }
@@ -89,7 +84,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
     final bookmarkedData = _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
     await prefs.setStringList('bookmarked_articles', bookmarkedData);
-    await prefs.setStringList('bookmarks', bookmarkedData); // Also update the 'bookmarks' key used in HomeScreen
+    await prefs.setStringList('bookmarks', bookmarkedData);
   }
 
   @override
@@ -152,20 +147,43 @@ class _ArticleScreenState extends State<ArticleScreen> {
               widget.article['publishedAt'] != null
                   ? 'Published on: ${_formatDate(widget.article['publishedAt'])}'
                   : '',
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
+              style: const TextStyle(fontSize: 20, color: Colors.grey),
             ),
             const SizedBox(height: 16),
             Text(
               widget.article['description'] ?? 'No Description',
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 20, height: 1.8),
             ),
             const SizedBox(height: 16),
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : Text(
-                    _fullContent,
-                    style: const TextStyle(fontSize: 16),
-                  ),
+                : (_fullContent.isNotEmpty
+                    ? Text(
+                        _fullContent,
+                        style: const TextStyle(fontSize: 20, height: 1.8),
+                      )
+                    : const Text(
+                        'Full article not available.',
+                        style: TextStyle(fontSize: 20, color: Colors.grey),
+                      )),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.open_in_browser),
+              label: const Text('Read Full Article on Website'),
+              onPressed: () async {
+                final url = widget.article['url'];
+                if (url != null && url.isNotEmpty) {
+                  final uri = Uri.parse(url);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not open the article URL')),
+                    );
+                  }
+                }
+              },
+            ),
           ],
         ),
       ),
