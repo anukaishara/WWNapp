@@ -88,6 +88,7 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
             },
           ),
         ),
+        
         body: _bookmarkedArticles.isEmpty
             ? const Center(child: Text("No bookmarks yet"))
             : ListView.builder(
