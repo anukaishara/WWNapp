@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../services/bookmark_provider.dart';
 import 'profile_screen.dart';
 import 'article_screen.dart';
 import 'menu_screen.dart';
 import 'search_screen.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import '../services/scraping.dart'; // Make sure this has scrapeLocalCategory
+import '../services/scraping.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String? initialMainCategory;
+  final String? initialSubCategory;
+
+  const HomeScreen({
+    super.key,
+    this.initialMainCategory,
+    this.initialSubCategory,
+  });
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -21,7 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedSubCategory;
   List<Map<String, dynamic>> newsArticles = [];
   final Map<String, List<Map<String, dynamic>>> cachedNews = {};
-  List<Map<String, dynamic>> _bookmarkedArticles = [];
   bool isLoading = false;
 
   final ScrollController _scrollController = ScrollController();
@@ -44,23 +50,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    loadBookmarkedArticles();
-  }
 
-  Future<void> loadBookmarkedArticles() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getStringList('bookmarked_articles') ?? [];
-    setState(() {
-      _bookmarkedArticles =
-          data.map((json) => jsonDecode(json) as Map<String, dynamic>).toList();
-    });
-  }
-
-  Future<void> _saveBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> jsonBookmarks =
-        _bookmarkedArticles.map((item) => json.encode(item)).toList();
-    await prefs.setStringList('bookmarked_articles', jsonBookmarks);
+    // Use initialMainCategory and initialSubCategory if provided
+    if (widget.initialMainCategory != null &&
+        (widget.initialMainCategory == "Local" || widget.initialMainCategory == "Foreign")) {
+      _selectedMainCategory = widget.initialMainCategory!;
+      _selectedSubCategory = widget.initialSubCategory ??
+          (mainToSubCategories[_selectedMainCategory]?.first ?? "Top");
+      _fetchNews(_selectedSubCategory!);
+    } else if (widget.initialMainCategory != null && widget.initialMainCategory == "For you") {
+      _selectedMainCategory = "For you";
+      _selectedSubCategory = null;
+      setState(() => newsArticles = []);
+    }
   }
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
@@ -90,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
           cachedNews[category] = freshArticles;
         });
       } else if (_selectedMainCategory == "Local") {
-        // --- Use new scraping logic for Local ---
         final scrapedArticles = await scrapeLocalCategory(category);
         setState(() {
           newsArticles = scrapedArticles;
@@ -113,23 +114,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
     }
-  }
-
-  bool isBookmarked(Map<String, dynamic> article) {
-    return _bookmarkedArticles
-        .any((item) => item['title'] == article['title']);
-  }
-
-  Future<void> toggleBookmark(Map<String, dynamic> article) async {
-    setState(() {
-      if (isBookmarked(article)) {
-        _bookmarkedArticles
-            .removeWhere((item) => item['title'] == article['title']);
-      } else {
-        _bookmarkedArticles.add(article);
-      }
-    });
-    await _saveBookmarks();
   }
 
   @override
@@ -166,21 +150,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
-
                 if (updated == true) {
-                  await loadBookmarkedArticles();
                   setState(() {});
                 }
               },
             ),
           ],
+          elevation: 2,
+          shadowColor: Colors.black54,
         ),
         body: SafeArea(
           child: Column(
             children: [
               const SizedBox(height: 8),
               _buildCategoryFilters(),
-              Expanded(child: _buildNewsContent()),
+              Expanded(child: _buildNewsContent(context)),
             ],
           ),
         ),
@@ -197,14 +181,15 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 40,
+          height: 42,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: mainCategories.length,
             itemBuilder: (context, index) {
               final mainCat = mainCategories[index];
+              final isSelected = _selectedMainCategory == mainCat;
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: ElevatedButton(
                   onPressed: () {
                     setState(() {
@@ -220,16 +205,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedMainCategory == mainCat
-                        ? Colors.white
-                        : Colors.red,
-                    foregroundColor: _selectedMainCategory == mainCat
-                        ? Colors.black
-                        : Colors.white,
+                    backgroundColor: isSelected ? Colors.white : Colors.red,
+                    foregroundColor: isSelected ? Colors.black : Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
+                        borderRadius: BorderRadius.circular(22)),
+                    elevation: isSelected ? 4 : 0,
+                    shadowColor: Colors.black26,
                   ),
-                  child: Text(mainCat),
+                  child: Text(
+                    mainCat,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               );
             },
@@ -237,19 +223,20 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (_selectedMainCategory != "For you")
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 12, left: 8),
             child: SizedBox(
-              height: 40,
+              height: 42,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: subCategories.length,
                 itemBuilder: (context, index) {
                   final subCat = subCategories[index];
+                  final isSelected = _selectedSubCategory == subCat;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: ElevatedButton(
                       onPressed: () {
-                        if (_selectedSubCategory != subCat) {
+                        if (!isSelected) {
                           setState(() {
                             _selectedSubCategory = subCat;
                           });
@@ -257,16 +244,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _selectedSubCategory == subCat
-                            ? Colors.white
-                            : Colors.red,
-                        foregroundColor: _selectedSubCategory == subCat
-                            ? Colors.black
-                            : Colors.white,
+                        backgroundColor: isSelected ? Colors.white : Colors.red,
+                        foregroundColor: isSelected ? Colors.black : Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
+                            borderRadius: BorderRadius.circular(22)),
+                        elevation: isSelected ? 4 : 0,
+                        shadowColor: Colors.black26,
                       ),
-                      child: Text(subCat),
+                      child: Text(
+                        subCat,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   );
                 },
@@ -277,12 +265,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNewsContent() {
+  Widget _buildNewsContent(BuildContext context) {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator(color: Colors.red));
     }
     if (newsArticles.isEmpty) {
-      return const Center(child: Text('No news available'));
+      return const Center(
+        child: Text(
+          'No news available',
+          style: TextStyle(fontSize: 18, color: Colors.grey),
+        ),
+      );
     }
     return RefreshIndicator(
       onRefresh: () async =>
@@ -293,8 +286,8 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: newsArticles.length,
         itemBuilder: (context, index) {
           final article = newsArticles[index];
-          final bookmarked = isBookmarked(article);
-
+          final bookmarkProvider = context.watch<BookmarkProvider>();
+          final bookmarked = bookmarkProvider.isBookmarked(article);
           return GestureDetector(
             onTap: () => Navigator.push(
                 context,
@@ -330,21 +323,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(article['title'] ?? 'No Title',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18)),
                           const SizedBox(height: 8),
                           Align(
                             alignment: Alignment.bottomRight,
                             child: IconButton(
                               icon: Icon(
-                                bookmarked
-                                    ? Icons.star
-                                    : Icons.star_border,
-                                color: bookmarked
-                                    ? Colors.yellow[700]
-                                    : Colors.grey,
+                                bookmarked ? Icons.star : Icons.star_border,
+                                color: bookmarked ? Colors.yellow[700] : Colors.grey,
                               ),
-                              onPressed: () => toggleBookmark(article),
+                              onPressed: () => context
+                                  .read<BookmarkProvider>()
+                                  .toggleBookmark(article),
                             ),
                           ),
                         ],

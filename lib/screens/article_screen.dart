@@ -1,19 +1,15 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../services/scraping.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../services/bookmark_provider.dart';
+import '../services/history_provider.dart';
 
 class ArticleScreen extends StatefulWidget {
   final Map<String, dynamic> article;
-  final bool isBookmarked;
-  final VoidCallback? onBookmarkToggle;
 
   const ArticleScreen({
     super.key,
     required this.article,
-    this.isBookmarked = false,
-    this.onBookmarkToggle,
   });
 
   @override
@@ -23,14 +19,14 @@ class ArticleScreen extends StatefulWidget {
 class _ArticleScreenState extends State<ArticleScreen> {
   String _fullContent = '';
   bool _isLoading = true;
-  bool _isBookmarked = false;
-  List<Map<String, dynamic>> _bookmarkedArticles = [];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HistoryProvider>().addToHistory(widget.article);
+    });
     _fetchFullContent();
-    _loadBookmarks();
   }
 
   Future<void> _fetchFullContent() async {
@@ -59,37 +55,13 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
-  Future<void> _loadBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bookmarkedData = prefs.getStringList('bookmarked_articles') ?? [];
-    setState(() {
-      _bookmarkedArticles = bookmarkedData
-          .map((json) => jsonDecode(json) as Map<String, dynamic>)
-          .toList();
-      _isBookmarked = _bookmarkedArticles.any((item) => item['title'] == widget.article['title']);
-    });
-  }
-
-  Future<void> _toggleBookmark() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      _isBookmarked = !_isBookmarked;
-      if (_isBookmarked) {
-        _bookmarkedArticles.add(widget.article);
-      } else {
-        _bookmarkedArticles.removeWhere((item) => item['title'] == widget.article['title']);
-      }
-    });
-
-    final bookmarkedData = _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
-    await prefs.setStringList('bookmarked_articles', bookmarkedData);
-    await prefs.setStringList('bookmarks', bookmarkedData);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    final isBookmarked = bookmarkProvider.isBookmarked(widget.article);
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F8F8),
       appBar: AppBar(
         backgroundColor: Colors.red,
         leading: IconButton(
@@ -99,90 +71,125 @@ class _ArticleScreenState extends State<ArticleScreen> {
         actions: [
           IconButton(
             icon: Icon(
-              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               color: Colors.white,
             ),
-            onPressed: _toggleBookmark,
+            tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
+            onPressed: () => context.read<BookmarkProvider>().toggleBookmark(widget.article),
           ),
         ],
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(10),
-          child: Divider(color: Colors.white, height: 10, thickness: 10),
-        ),
+        elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Article image with rounded corners and shadow
             if (widget.article['urlToImage'] != null && widget.article['urlToImage'].isNotEmpty)
-              Image.network(
-                widget.article['urlToImage'],
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    return child;
-                  }
-                  return Container(
-                    height: 200,
-                    color: Colors.grey[300],
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 200,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.error, color: Colors.red),
-                  );
-                },
+              Stack(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.network(
+                        widget.article['urlToImage'],
+                        height: 220,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 220,
+                            color: Colors.grey[300],
+                            child: const Center(child: CircularProgressIndicator()),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 220,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.error, color: Colors.red, size: 48),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  // Optional: Floating bookmark button over image
+                  Positioned(
+                    top: 28,
+                    right: 32,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 24,
+                        child: IconButton(
+                          icon: Icon(
+                            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                            color: Colors.red,
+                            size: 28,
+                          ),
+                          tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
+                          onPressed: () => context.read<BookmarkProvider>().toggleBookmark(widget.article),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            const SizedBox(height: 16),
-            Text(
-              widget.article['title'] ?? 'No Title',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.article['publishedAt'] != null
-                  ? 'Published on: ${_formatDate(widget.article['publishedAt'])}'
-                  : '',
-              style: const TextStyle(fontSize: 20, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.article['description'] ?? 'No Description',
-              style: const TextStyle(fontSize: 20, height: 1.8),
-            ),
-            const SizedBox(height: 16),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : (_fullContent.isNotEmpty
-                    ? Text(
-                        _fullContent,
-                        style: const TextStyle(fontSize: 20, height: 1.8),
-                      )
-                    : const Text(
-                        'Full article not available.',
-                        style: TextStyle(fontSize: 20, color: Colors.grey),
-                      )),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.open_in_browser),
-              label: const Text('Read Full Article on Website'),
-              onPressed: () async {
-                final url = widget.article['url'];
-                if (url != null && url.isNotEmpty) {
-                  final uri = Uri.parse(url);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Could not open the article URL')),
-                    );
-                  }
-                }
-              },
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                margin: const EdgeInsets.only(bottom: 24),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.article['title'] ?? 'No Title',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (widget.article['publishedAt'] != null)
+                        Text(
+                          'Published on: ${_formatDate(widget.article['publishedAt'])}',
+                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      const SizedBox(height: 18),
+                      _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : (_fullContent.isNotEmpty
+                              ? Text(
+                                  _fullContent,
+                                  style: const TextStyle(fontSize: 18, height: 1.7, color: Colors.black87),
+                                )
+                              : const Text(
+                                  'Full article not available.',
+                                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                                )),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "7708603750",
+    "firebase_url": "https://wwnapp-e8f99-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "wwnapp-e8f99",
     "storage_bucket": "wwnapp-e8f99.firebasestorage.app"
   },
@@ -13,6 +14,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "7708603750-nd74gk2uioj0q41o09o5t8g6pnjpa9qo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.wwn_app",
+            "certificate_hash": "79be201ce014c6e3a370ad5ea88c12709be929f2"
+          }
+        },
         {
           "client_id": "7708603750-o6l48vth75ds6ihn1fn4215rmijieb26.apps.googleusercontent.com",
           "client_type": 3

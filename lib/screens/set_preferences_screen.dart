@@ -46,32 +46,55 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   }
 
   void _addNewCategory(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (BuildContext context) {
-        return SimpleDialog(
-          title: const Text('Select a Category'),
-          children: availableCategories.map((category) {
-            final bool isAlreadyAdded = _categories.contains(category);
-            return ListTile(
-              title: Text(
-                category,
-                style: TextStyle(
-                  color: isAlreadyAdded ? Colors.grey : Colors.black,
+        return SizedBox(
+          height: 350,
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              const Text(
+                'Select a Category',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const Divider(),
+              Expanded(
+                child: ListView(
+                  children: availableCategories.map((category) {
+                    final bool isAlreadyAdded = _categories.contains(category);
+                    return ListTile(
+                      leading: Icon(
+                        isAlreadyAdded ? Icons.check_circle : Icons.add_circle_outline,
+                        color: isAlreadyAdded ? Colors.green : Colors.grey,
+                      ),
+                      title: Text(
+                        category,
+                        style: TextStyle(
+                          color: isAlreadyAdded ? Colors.grey : Colors.black,
+                          fontWeight: isAlreadyAdded ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                      enabled: !isAlreadyAdded,
+                      onTap: () {
+                        if (!isAlreadyAdded) {
+                          setState(() {
+                            _categories.add(category);
+                          });
+                          _savePreferences();
+                        }
+                        Navigator.of(context).pop();
+                      },
+                    );
+                  }).toList(),
                 ),
               ),
-              enabled: !isAlreadyAdded,
-              onTap: () {
-                if (!isAlreadyAdded) {
-                  setState(() {
-                    _categories.add(category);
-                  });
-                  _savePreferences();
-                }
-                Navigator.of(context).pop();
-              },
-            );
-          }).toList(),
+            ],
+          ),
         );
       },
     );
@@ -82,27 +105,44 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (BuildContext context) {
         return Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(24.0),
           child: Wrap(
             children: [
-              const Center(
-                child: Text(
-                  'Delete the preference?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.delete_forever, color: Colors.red, size: 40),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Delete this preference?',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _categories[index],
+                      style: const TextStyle(fontSize: 18, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 28),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      minimumSize: const Size(120, 45),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                     onPressed: () {
-                      Navigator.pop(context); // Close the bottom sheet
+                      Navigator.pop(context);
                       setState(() {
                         _categories.removeAt(index);
                       });
@@ -111,17 +151,23 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                         const SnackBar(content: Text("Preference deleted")),
                       );
                     },
-                    child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                    icon: const Icon(Icons.delete, color: Colors.white),
+                    label: const Text('Delete', style: TextStyle(color: Colors.white)),
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                    onPressed: () {
-                      Navigator.pop(context); // Just close the bottom sheet
-                    },
-                    child: const Text('Cancel', style: TextStyle(color: Colors.black)),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[300],
+                      minimumSize: const Size(120, 45),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.cancel, color: Colors.black),
+                    label: const Text('Cancel', style: TextStyle(color: Colors.black)),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         );
@@ -131,55 +177,54 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.red,
         title: const Text(
           'My Categories',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
+        elevation: 1,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                ElevatedButton.icon(
-                  onPressed: () {
-                    _addNewCategory(context);
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add new Categories'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    backgroundColor: Colors.grey[300],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                    ),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () => _addNewCategory(context),
+                icon: const Icon(Icons.add, color: Color.fromARGB(255, 16, 16, 16)),
+                label: const Text('Add New Category'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: const Color.fromARGB(255, 0, 0, 0),
+                  backgroundColor: Colors.white,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
                   ),
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 24.0),
             const Text(
-              'Selected Preferences:',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              'Selected Preferences',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Expanded(
               child: _categories.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         "No categories added yet.",
-                        style: TextStyle(fontSize: 16.0, color: Colors.grey),
+                        style: TextStyle(fontSize: 16.0, color: Colors.grey[600]),
                       ),
                     )
                   : ListView.separated(
@@ -187,23 +232,37 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                       separatorBuilder: (context, index) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         return GestureDetector(
-                          onTap: () => _showDeleteDialog(index),
-                          child: SizedBox(
-                            height: 60,
-                            width: double.infinity,
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[300],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  _categories[index],
-                                  style: const TextStyle(fontSize: 18),
+                          onLongPress: () => _showDeleteDialog(index),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            height: 65,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.grey[800] : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.15),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
-                              ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 16),
+                                Icon(Icons.label_important, color: Colors.red[400]),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    _categories[index],
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  onPressed: () => _showDeleteDialog(index),
+                                ),
+                              ],
                             ),
                           ),
                         );

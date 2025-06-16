@@ -7,6 +7,9 @@ class TitleScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -17,88 +20,105 @@ class TitleScreen extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              height: MediaQuery.of(context).size.height / 2, // 50% of screen height
+              height: screenHeight / 2,
               decoration: const BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage("assets/Title1.png"),
                   fit: BoxFit.cover,
                 ),
               ),
+              child: Container(
+                // Optional: subtle dark overlay for better text contrast
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.12),
+                ),
+              ),
             ),
           ),
           // Bottom container, starting from the middle of the image
           Positioned(
-            top: MediaQuery.of(context).size.height / 4, // Start from the middle of the image
-            left: MediaQuery.of(context).size.width * 0.075, // 5% padding on the left
-            right: MediaQuery.of(context).size.width * 0.075, // 5% padding on the right
+            top: screenHeight / 3.2, // slightly above half for a more modern overlap
+            left: screenWidth * 0.07,
+            right: screenWidth * 0.07,
             bottom: 0,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: const BoxDecoration(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 18,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  const SizedBox(height: 28),
                   // App logo
-                  const SizedBox(height: 30),
-                  const Text(
-                    'WWN',
-                    style: TextStyle(
-                      fontSize: 80,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 202, 27, 14),
-                      height: 0.9,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'World Wide News', // Entire sentence in gray
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 175, 175, 175), // Gray color
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                          ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F8F8),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withOpacity(0.08),
+                          blurRadius: 14,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 30),
-                  const Text(
-                    'Unlock a world of',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Color.fromARGB(134, 55, 55, 55),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    child: const Text(
+                      'WWN',
+                      style: TextStyle(
+                        fontSize: 80,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 202, 27, 14),
+                        height: 0.9,
+                        letterSpacing: 2,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   const Text(
-                    'news insights',
-                    textAlign: TextAlign.center,
+                    'World Wide News',
                     style: TextStyle(
-                      fontSize: 24,
+                      color: Color.fromARGB(255, 175, 175, 175),
+                      fontSize: 30,
                       fontWeight: FontWeight.w800,
-                      color: Color.fromARGB(134, 55, 55, 55),
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'tailored just for you!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Color.fromARGB(134, 55, 55, 55),
+                  const SizedBox(height: 24),
+                  // Headline
+                  ShaderMask(
+                    shaderCallback: (Rect bounds) {
+                      return const LinearGradient(
+                        colors: [
+                          Color.fromARGB(255, 203, 55, 45),
+                          Color.fromARGB(255, 175, 175, 175)
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds);
+                    },
+                    child: const Text(
+                      'Unlock a world of\nnews insights\ntailored just for you!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black, // This will be ignored by ShaderMask
+                        height: 1.2,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 36),
                   const Text(
                     'Login or create an account to begin!',
                     textAlign: TextAlign.center,
@@ -108,56 +128,67 @@ class TitleScreen extends StatelessWidget {
                       color: Color.fromARGB(255, 216, 59, 48),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 36),
                   // Buttons
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 203, 55, 45),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(255, 203, 55, 45),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        minimumSize: const Size(200, 50),
+                        elevation: 2,
                       ),
-                      minimumSize: const Size(200, 50),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignInScreen()),
-                      );
-                    },
-                    child: const Text(
-                      'SIGN IN',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.red),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      minimumSize: const Size(200, 50),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                      );
-                    },
-                    child: const Text(
-                      'SIGN UP',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignInScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'SIGN IN',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          letterSpacing: 1.1,
+                        ),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        minimumSize: const Size(200, 50),
+                        foregroundColor: Colors.red,
+                        backgroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'SIGN UP',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                 ],
               ),
             ),

@@ -1,162 +1,137 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:provider/provider.dart';
+import '../services/bookmark_provider.dart';
 import 'article_screen.dart';
 
-class BookmarkScreen extends StatefulWidget {
+class BookmarkScreen extends StatelessWidget {
   const BookmarkScreen({super.key});
-  
-
-  @override
-  State<BookmarkScreen> createState() => _BookmarkScreenState();
-  
-}
-
-class _BookmarkScreenState extends State<BookmarkScreen> {
-  List<Map<String, dynamic>> _bookmarkedArticles = [];
-  bool _bookmarkedArticlesChanged = false; // Tracks changes for syncing
-
-  @override
-  void initState() {
-    super.initState();
-    loadBookmarks();
-  }
-
-  Future<void> loadBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getStringList('bookmarked_articles') ?? [];
-    setState(() {
-      _bookmarkedArticles = data
-          .map((json) => Map<String, dynamic>.from(jsonDecode(json)))
-          .toList();
-    });
-  }
-
-  Future<void> _toggleBookmark(Map<String, dynamic> article) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      _bookmarkedArticlesChanged = true; // Mark as changed
-      final isAlreadyBookmarked = _bookmarkedArticles
-          .any((item) => item['title'] == article['title']);
-
-      if (isAlreadyBookmarked) {
-        _bookmarkedArticles
-            .removeWhere((item) => item['title'] == article['title']);
-      } else {
-        _bookmarkedArticles.add(article);
-      }
-    });
-
-    final updatedData =
-        _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
-    await prefs.setStringList('bookmarked_articles', updatedData);
-  }
-
-  bool _isBookmarked(Map<String, dynamic> article) {
-    return _bookmarkedArticles
-        .any((item) => item['title'] == article['title']);
-  }
-
-  Future<void> removeBookmark(Map<String, dynamic> article) async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _bookmarkedArticlesChanged = true; // Mark as changed
-      _bookmarkedArticles
-          .removeWhere((item) => item['title'] == article['title']);
-    });
-    final updatedData =
-        _bookmarkedArticles.map((a) => json.encode(a)).toList();
-    await prefs.setStringList('bookmarked_articles', updatedData);
-  }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pop(context, _bookmarkedArticlesChanged);
-        return false;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.red,
-          title: const Text("Bookmarks", style: TextStyle(color: Colors.white)),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () {
-              Navigator.pop(context, _bookmarkedArticlesChanged);
-            },
-          ),
-        ),
-        
-        body: _bookmarkedArticles.isEmpty
-            ? const Center(child: Text("No bookmarks yet"))
-            : ListView.builder(
-                itemCount: _bookmarkedArticles.length,
-                itemBuilder: (context, index) {
-                  final article = _bookmarkedArticles[index];
-                  final isBookmarked = _isBookmarked(article);
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    final bookmarkedArticles = bookmarkProvider.bookmarkedArticles;
 
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => ArticleScreen(article: article)),
-                      );
-                    },
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F8F8),
+      appBar: AppBar(
+        backgroundColor: Colors.red,
+        title: const Text(
+          "Bookmarks",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        elevation: 1,
+      ),
+      body: bookmarkedArticles.isEmpty
+          ? _buildEmptyState(context)
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              itemCount: bookmarkedArticles.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final article = bookmarkedArticles[index];
+                final isBookmarked = bookmarkProvider.isBookmarked(article);
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ArticleScreen(article: article)),
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
                     child: Card(
-                      margin: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
+                      elevation: 3,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 4,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Article image with rounded corners
                           if (article['urlToImage'] != null &&
                               article['urlToImage'].isNotEmpty)
                             ClipRRect(
                               borderRadius: const BorderRadius.horizontal(
-                                  left: Radius.circular(12)),
-                              child: Image.network(article['urlToImage'],
-                                  height: 100,
-                                  width: 100,
-                                  fit: BoxFit.cover),
+                                  left: Radius.circular(16)),
+                              child: Image.network(
+                                article['urlToImage'],
+                                height: 110,
+                                width: 110,
+                                fit: BoxFit.cover,
+                                filterQuality: FilterQuality.high,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  height: 110,
+                                  width: 110,
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.broken_image,
+                                      color: Colors.red, size: 40),
+                                ),
+                              ),
                             )
                           else
                             Container(
-                              height: 100,
-                              width: 100,
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.image),
+                              height: 110,
+                              width: 110,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: const BorderRadius.horizontal(
+                                    left: Radius.circular(16)),
+                              ),
+                              child: const Icon(Icons.image, size: 40),
                             ),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     article['title'] ?? 'No Title',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
                                   ),
                                   const SizedBox(height: 8),
-                                  Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: IconButton(
-                                      icon: Icon(
-                                        isBookmarked
-                                            ? Icons.star
-                                            : Icons.star_border,
-                                        color: isBookmarked
-                                            ? Colors.yellow[700]
-                                            : Colors.grey,
-                                      ),
-                                      onPressed: () =>
-                                          _toggleBookmark(article),
+                                  if (article['publishedAt'] != null)
+                                    Text(
+                                      _formatDate(article['publishedAt']),
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.grey),
                                     ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          isBookmarked
+                                              ? Icons.star
+                                              : Icons.star_border,
+                                          color: isBookmarked
+                                              ? Colors.yellow[700]
+                                              : Colors.grey,
+                                          size: 28,
+                                        ),
+                                        onPressed: () => context
+                                            .read<BookmarkProvider>()
+                                            .toggleBookmark(article),
+                                        tooltip: isBookmarked
+                                            ? 'Remove Bookmark'
+                                            : 'Add Bookmark',
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -165,10 +140,47 @@ class _BookmarkScreenState extends State<BookmarkScreen> {
                         ],
                       ),
                     ),
-                  );
-                },
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bookmark_border, size: 72, color: Colors.red[200]),
+            const SizedBox(height: 24),
+            const Text(
+              "No bookmarks yet",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
               ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              "Tap the star icon on any article to save it here for quick access.",
+              style: TextStyle(fontSize: 16, color: Colors.black45),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _formatDate(String dateString) {
+    final date = DateTime.tryParse(dateString);
+    if (date != null) {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+    return '';
   }
 }
