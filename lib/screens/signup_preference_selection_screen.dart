@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 
-class SignupPrefernceScreen extends StatefulWidget {
-  const SignupPrefernceScreen({super.key});
+class SignupPreferenceScreen extends StatefulWidget {
+  const SignupPreferenceScreen({super.key});
 
   @override
-  State<SignupPrefernceScreen> createState() => _SignupPrefernceScreenState();
+  State<SignupPreferenceScreen> createState() => _SignupPreferenceScreenState();
 }
 
-class _SignupPrefernceScreenState extends State<SignupPrefernceScreen> {
-  final List<String> preferences = ['Sports', 'Business', 'History', 'Technology'];
+class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
+  // Updated categories
+  final Map<String, List<String>> categories = {
+    "Local": ["Top", "Business", "Sports", "Entertainment", "Technology"],
+    "Foreign": ["Top", "Sports", "Business", "Technology", "Politics", "Entertainment"],
+  };
+
   Set<String> selectedPreferences = {};
 
   void _savePreferences() async {
@@ -18,77 +23,125 @@ class _SignupPrefernceScreenState extends State<SignupPrefernceScreen> {
     await prefs.setStringList('userPreferences', selectedPreferences.toList());
   }
 
+  void _onChipTap(String category, String subcategory) {
+    final key = "$category-$subcategory";
+    setState(() {
+      if (selectedPreferences.contains(key)) {
+        selectedPreferences.remove(key);
+      } else {
+        selectedPreferences.add(key);
+      }
+    });
+    _savePreferences();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 209, 62, 51),
-      
+      backgroundColor: const Color(0xFFFFF0F0), // Soft white with a reddish tint
       body: Center(
-         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const Icon(Icons.tune, color: Colors.red, size: 60),
+              const SizedBox(height: 12),
               const Text(
-                'Select your preferences',
+                'Select your news preferences',
                 style: TextStyle(
-                  fontSize: 30,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Colors.red,
+                  letterSpacing: 1.1,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: preferences.map((preference) {
-                  bool isSelected = selectedPreferences.contains(preference);
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (isSelected) {
-                          selectedPreferences.remove(preference);
-                        } else {
-                          selectedPreferences.add(preference);
-                        }
-                      });
-                      _savePreferences();
-                    },
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.8,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.grey[400] : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 4),
-                        ],
-                      ),
+              const SizedBox(height: 10),
+              const Text(
+                'Choose the topics you care about. You can always change these later in your profile.',
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              ...categories.entries.map((entry) {
+                final mainCat = entry.key;
+                final subs = entry.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
-                        preference,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        mainCat,
+                        style: TextStyle(
                           fontSize: 20,
-                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          color: mainCat == "Local"
+                              ? Colors.orange[800]
+                              : Colors.blue[800],
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[800],
-                  foregroundColor: Colors.white,
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: subs.map((sub) {
+                        final key = "$mainCat-$sub";
+                        final isSelected = selectedPreferences.contains(key);
+                        return ChoiceChip(
+                          label: Text(
+                            sub,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: mainCat == "Local"
+                              ? Colors.orange[800]
+                              : Colors.blue[800],
+                          backgroundColor: Colors.grey[200],
+                          onSelected: (_) => _onChipTap(mainCat, sub),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: isSelected ? 2 : 0,
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                );
+              }).toList(),
+              const SizedBox(height: 26),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: selectedPreferences.isNotEmpty
+                      ? () {
+                          _savePreferences();
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const HomeScreen()),
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Continue'),
                 ),
-                child: const Text('Next'),
               ),
             ],
           ),
@@ -97,7 +150,3 @@ class _SignupPrefernceScreenState extends State<SignupPrefernceScreen> {
     );
   }
 }
-  
-
-
-        
