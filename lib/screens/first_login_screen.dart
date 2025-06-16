@@ -36,7 +36,7 @@ class _FirstLoginScreenState extends State<FirstLoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const SignupPrefernceScreen(),
+          builder: (context) => const SignupPreferenceScreen(),
         ),
       );
     } else {
