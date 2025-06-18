@@ -20,7 +20,7 @@ dependencies:
   shared_preferences: ^2.0.15
   mailer: ^6.4.1
   http: ^1.2.0
-  rss_dart: ^1.0.13
+  rss_dart: 1.0.12
   html_tags_cleaner: ^0.0.3
   url_launcher: ^6.1.10
 

@@ -83,8 +83,11 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
         final query = categoryToQuery[category] ?? 'news';
-        final freshArticles =
-            await ApiService.fetchAndDisplayArticles(query: query);
+        final freshArticles = await ApiService.fetchAndDisplayArticles(
+          query: query,
+          mainCategory: _selectedMainCategory,
+          subCategory: _selectedSubCategory ?? '',
+        );
         setState(() {
           newsArticles = freshArticles;
           cachedNews[category] = freshArticles;
