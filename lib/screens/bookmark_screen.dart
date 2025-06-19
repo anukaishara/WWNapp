@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/bookmark_provider.dart';
 import 'article_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class BookmarkScreen extends StatelessWidget {
   const BookmarkScreen({super.key});
@@ -10,6 +11,12 @@ class BookmarkScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final bookmarkProvider = context.watch<BookmarkProvider>();
     final bookmarkedArticles = bookmarkProvider.bookmarkedArticles;
+
+    // Get current user's email
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email != null) {
+      // await UserDataService.setPreferences(email, preferences);
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
@@ -42,7 +49,8 @@ class BookmarkScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => ArticleScreen(article: article)),
+                        builder: (_) => ArticleScreen(article: article),
+                      ),
                     );
                   },
                   child: Container(

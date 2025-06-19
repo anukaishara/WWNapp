@@ -8,6 +8,7 @@ import 'menu_screen.dart';
 import 'search_screen.dart';
 import 'package:flutter/services.dart';
 import '../services/scraping.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? initialMainCategory;
@@ -66,9 +67,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
-    if (_scrollController.hasClients) {
-      _scrollPositions[_selectedSubCategory ?? "For you"] =
-          _scrollController.position.pixels;
+    setState(() => isLoading = true);
+
+    if (_selectedMainCategory == "Local") {
+      // 1. Scrape and save to Firestore (already done in scraping.dart)
+      await scrapeLocalCategory(category);
+
+      // 2. Fetch from Firestore (with docId, mainCategory, subCategory)
+      final snapshot = await FirebaseFirestore.instance
+          .collection('articles')
+          .where('mainCategory', isEqualTo: 'Local')
+          .where('subCategory', isEqualTo: category)
+          .get();
+
+      final articles = snapshot.docs.map((doc) => {
+        ...doc.data(),
+        'docId': doc.id,
+      }).toList();
+
+      setState(() {
+        newsArticles = articles;
+        cachedNews[category] = articles;
+        isLoading = false;
+      });
+      return;
     }
 
     setState(() {
@@ -86,9 +108,21 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         final query = categoryToQuery[category] ?? 'news';
         final freshArticles =
-            await ApiService.fetchAndDisplayArticles(query: query);
+            await ApiService.fetchAndDisplayArticles(
+              query: query,
+              mainCategory: _selectedMainCategory,
+              subCategory: category,
+            );
+
+        // Now fetch from Firestore for display (with docId)
+        final articles = await ApiService.fetchArticlesFromFirestore(
+          mainCategory: _selectedMainCategory,
+          subCategory: category,
+        );
+
+        // Display 'articles' in your UI
         setState(() {
-          newsArticles = freshArticles;
+          newsArticles = articles;
           cachedNews[category] = freshArticles;
         });
       } else if (_selectedMainCategory == "Local") {
@@ -370,4 +404,25 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+}
+
+// Example function to fetch articles from Firestore asynchronously
+Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore({String? mainCategory, String? subCategory}) async {
+  Query query = FirebaseFirestore.instance.collection('articles');
+  if (mainCategory != null) {
+    query = query.where('mainCategory', isEqualTo: mainCategory);
+  }
+  if (subCategory != null) {
+    query = query.where('subCategory', isEqualTo: subCategory);
+  }
+  final snapshot = await query.get();
+  return snapshot.docs.map((doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return {
+      ...data,
+      'docId': doc.id,
+      'mainCategory': data['mainCategory'],
+      'subCategory': data['subCategory'],
+    };
+  }).toList();
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/user_data_service.dart';
 
 class SignupPreferenceScreen extends StatefulWidget {
   const SignupPreferenceScreen({super.key});
@@ -33,6 +36,18 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
       }
     });
     _savePreferences();
+  }
+
+  void _onContinue() async {
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email != null) {
+      await UserDataService.setPreferences(email, selectedPreferences.toList());
+      // Navigate to home or next screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
   }
 
   @override
@@ -120,14 +135,7 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: selectedPreferences.isNotEmpty
-                      ? () {
-                          _savePreferences();
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const HomeScreen()),
-                          );
-                        }
+                      ? _onContinue
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,

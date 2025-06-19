@@ -5,6 +5,7 @@ import 'otp_verification_screen.dart';
 import '../services/google_auth_service.dart';
 import '../services/facebook_auth_service.dart';
 import 'first_login_screen.dart';
+import '../services/user_data_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -57,6 +58,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: _passwordController.text.trim(),
       );
       await _saveCredentials();
+      // After user signs up and you have their email, you can set preferences if needed.
+      // await UserDataService.setPreferences(email, preferences); // Removed undefined 'preferences'
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

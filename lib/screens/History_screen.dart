@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/history_provider.dart';
-import 'article_screen.dart';
+import 'article_screen.dart' hide IconButton;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -10,6 +11,12 @@ class HistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final historyProvider = context.watch<HistoryProvider>();
     final historyArticles = historyProvider.historyArticles;
+
+    // Get current user's email
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email != null) {
+      // await UserDataService.setPreferences(email, preferences);
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
@@ -49,7 +56,8 @@ class HistoryScreen extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => ArticleScreen(article: article)),
+                      builder: (_) => ArticleScreen(article: article),
+                    ),
                   ),
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),

@@ -187,7 +187,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, _categories), // <-- Return updated preferences!
         ),
         elevation: 1,
       ),
@@ -268,6 +268,17 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                         );
                       },
                     ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context, _categories),
+              icon: const Icon(Icons.save),
+              label: const Text('Save Preferences'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),

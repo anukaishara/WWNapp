@@ -114,7 +114,11 @@ class ApiService {
   ]);
 
   /// Fetch articles from all APIs, deduplicate, show instantly, save to Firestore in background
-  static Future<List<Map<String, dynamic>>> fetchAndDisplayArticles({String query = 'news'}) async {
+  static Future<List<Map<String, dynamic>>> fetchAndDisplayArticles({
+    String query = 'news',
+    String? mainCategory,
+    String? subCategory,
+  }) async {
     final articles = await aggregator.fetchAllArticles(query: query);
 
     // Remove duplicates by URL before returning to UI
@@ -126,17 +130,26 @@ class ApiService {
     }
 
     // Save to Firestore in background (do not await)
-    saveArticlesToFirestore(uniqueArticles.values.toList(), query);
+    saveArticlesToFirestore(
+      uniqueArticles.values.toList(),
+      query,
+      mainCategory: mainCategory,
+      subCategory: subCategory,
+    );
 
     // Return unique articles instantly for UI display
     return uniqueArticles.values.toList();
   }
 
   /// Save articles to Firestore, avoid duplicates by URL
-  static Future<void> saveArticlesToFirestore(List<Map<String, dynamic>> articles, String query) async {
+  static Future<void> saveArticlesToFirestore(
+    List<Map<String, dynamic>> articles,
+    String query, {
+    String? mainCategory,
+    String? subCategory,
+  }) async {
     final firestore = FirebaseFirestore.instance;
     final collection = firestore.collection('articles');
-
     WriteBatch batch = firestore.batch();
 
     for (final article in articles) {
@@ -147,6 +160,8 @@ class ApiService {
           batch.set(docRef, {
             ...article,
             'category': query,
+            'mainCategory': mainCategory,
+            'subCategory': subCategory,
             'savedAt': FieldValue.serverTimestamp(),
           });
         }
@@ -155,5 +170,24 @@ class ApiService {
 
     await batch.commit();
     print("✅ Articles saved to Firestore.");
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore({
+    String? mainCategory,
+    String? subCategory,
+  }) async {
+    final query = FirebaseFirestore.instance.collection('articles');
+    Query<Map<String, dynamic>> q = query;
+    if (mainCategory != null) {
+      q = q.where('mainCategory', isEqualTo: mainCategory);
+    }
+    if (subCategory != null) {
+      q = q.where('subCategory', isEqualTo: subCategory);
+    }
+    final snapshot = await q.get();
+    return snapshot.docs.map((doc) => {
+      ...doc.data(),
+      'docId': doc.id,
+    }).toList();
   }
 }

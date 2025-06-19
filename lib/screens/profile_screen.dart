@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'bookmark_screen.dart';
 import 'history_screen.dart';
-import 'set_preferences_screen.dart';
+// import 'set_preferences_screen.dart'; // Ensure this file exports the correct class
+import 'set_preferences_screen.dart'; // Make sure the class name matches the one defined in this file
 import 'reset_password_screen.dart';
 import 'manage_privacy_screen.dart';
+import '../services/user_data_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,6 +30,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _name = prefs.getString('username') ?? 'Guest';
     });
+  }
+
+  Future<void> _updatePreferences(String email, List<String> updatedPreferences) async {
+    await UserDataService.setPreferences(email, updatedPreferences);
+    // ...show success message or update UI...
   }
 
   @override
@@ -98,11 +106,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       context,
                       icon: Icons.tune,
                       label: 'Set Preferences',
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        final updatedPreferences = await Navigator.push<List<String>>(
                           context,
-                          MaterialPageRoute(builder: (context) => const PreferencesScreen()),
+                          MaterialPageRoute(builder: (context) => const PreferencesScreen()), // <-- FIXED
                         );
+                        if (updatedPreferences != null && updatedPreferences.isNotEmpty) {
+                          final email = FirebaseAuth.instance.currentUser?.email;
+                          if (email != null) {
+                            await _updatePreferences(email, updatedPreferences);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Preferences updated!')),
+                            );
+                          }
+                        }
                       },
                     ),
                     _buildProfileTile(
