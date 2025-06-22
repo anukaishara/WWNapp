@@ -68,17 +68,6 @@ class _ArticleScreenState extends State<ArticleScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: Colors.white,
-            ),
-            tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
-            onPressed: () => context.read<BookmarkProvider>().toggleBookmark(widget.article),
-          ),
-        ],
-        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(
