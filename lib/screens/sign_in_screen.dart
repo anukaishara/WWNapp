@@ -6,6 +6,7 @@ import '../services/facebook_auth_service.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
 
+
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
@@ -65,13 +66,14 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
 
+
+    
+
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-
-      await _saveLoginState();
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -216,15 +218,15 @@ class _SignInScreenState extends State<SignInScreen> {
             bottom: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(26)),
+                    BorderRadius.vertical(top: Radius.circular(26)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black12,
                     blurRadius: 18,
-                    offset: const Offset(0, -4),
+                    offset: Offset(0, -4),
                   ),
                 ],
               ),
@@ -400,3 +402,5 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 }
+
+

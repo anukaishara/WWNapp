@@ -7,7 +7,7 @@ buildscript {
 // Example mirror
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.1' // Update as needed
+        classpath 'com.android.tools.build:gradle:8.3.0' // Update as needed
         classpath 'com.google.gms:google-services:4.3.15' // Firebase integration if used
     }
 }

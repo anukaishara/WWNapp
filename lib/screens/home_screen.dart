@@ -10,6 +10,8 @@ import 'package:flutter/services.dart';
 import '../services/scraping.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
+
 class HomeScreen extends StatefulWidget {
   final String? initialMainCategory;
   final String? initialSubCategory;
@@ -311,9 +313,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+
+
     return RefreshIndicator(
       onRefresh: () async =>
           await _fetchNews(_selectedSubCategory ?? "Top", forceRefresh: true),
+
+    
+
+
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.only(bottom: 60),

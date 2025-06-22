@@ -5,7 +5,7 @@ import '../services/scraping.dart';
 import '../services/bookmark_provider.dart';
 import '../services/history_provider.dart';
 import '../services/user_data_service.dart'; // Import the UserDataService
-import 'article_screen.dart'; // Import the ArticleScreen
+// Import the ArticleScreen
 
 class ArticleListScreen extends StatelessWidget {
   final List<Map<String, dynamic>> articles;

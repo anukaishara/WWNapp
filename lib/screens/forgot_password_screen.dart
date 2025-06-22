@@ -71,14 +71,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               physics: const BouncingScrollPhysics(),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black12,
                       blurRadius: 16,
-                      offset: const Offset(0, -4),
+                      offset: Offset(0, -4),
                     ),
                   ],
                 ),
