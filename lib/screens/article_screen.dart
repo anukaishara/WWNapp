@@ -1,52 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/scraping.dart';
 import '../services/bookmark_provider.dart';
 import '../services/history_provider.dart';
-import '../services/user_data_service.dart'; // Import the UserDataService
-import 'article_screen.dart'; // Import the ArticleScreen
-
-class ArticleListScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> articles;
-
-  const ArticleListScreen({super.key, required this.articles});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Articles'),
-        backgroundColor: Colors.red,
-      ),
-      body: ListView.builder(
-        itemCount: articles.length,
-        itemBuilder: (context, index) {
-          final article = articles[index];
-          return ListTile(
-            title: Text(article['title'] ?? ''),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ArticleScreen(article: article),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
+import '../services/user_data_service.dart';
 
 class ArticleScreen extends StatefulWidget {
   final Map<String, dynamic> article;
 
-  const ArticleScreen({
-    super.key,
-    required this.article,
-  });
+  const ArticleScreen({super.key, required this.article});
 
   @override
   _ArticleScreenState createState() => _ArticleScreenState();
@@ -96,30 +59,12 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
-  void _onBookmarkPressed() async {
-    final articleId = widget.article['docId'];
-    final mainCategory = widget.article['mainCategory'];
-    final subCategory = widget.article['subCategory'];
-    final email = FirebaseAuth.instance.currentUser?.email;
-
-    print('Bookmarking: $articleId, $mainCategory, $subCategory');
-
-    if (email != null && articleId != null && mainCategory != null && subCategory != null) {
-      await context.read<BookmarkProvider>().toggleBookmark(widget.article);
-      setState(() {}); // <-- This will rebuild the widget and update the icon
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Article bookmarked!')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot bookmark: missing article info.')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final bookmarkProvider = context.watch<BookmarkProvider>();
+    if (!bookmarkProvider.isLoaded) {
+      return const Center(child: CircularProgressIndicator(color: Colors.red));
+    }
     final isBookmarked = bookmarkProvider.isBookmarked(widget.article);
 
     return Scaffold(
@@ -130,60 +75,12 @@ class _ArticleScreenState extends State<ArticleScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: Colors.white,
-            ),
-            tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
-            onPressed: () async {
-              // Toggle bookmark state
-              context.read<BookmarkProvider>().toggleBookmark(widget.article);
-              setState(() {}); // <-- This will rebuild the widget and update the icon
-
-              // Get the current user's email
-              final email = FirebaseAuth.instance.currentUser?.email;
-              final articleId = widget.article['docId'];
-              final mainCategory = widget.article['mainCategory'];
-              final subCategory = widget.article['subCategory'];
-
-              // Add or remove bookmark in the database
-              if (isBookmarked) {
-                // If already bookmarked, remove the bookmark
-                if (email != null) {
-                  UserDataService.removeBookmark(email, articleId, subCategory);
-                }
-              } else {
-                // If not bookmarked, add the bookmark
-                if (email != null) {
-                  print('Bookmarking: $articleId, $mainCategory, $subCategory');
-                  try {
-                    await UserDataService.addBookmark(email, articleId, mainCategory, subCategory);
-                    print('Bookmark saved to Firestore');
-                  } catch (e) {
-                    print('Error saving bookmark: $e');
-                  }
-                }
-              }
-
-              // Optionally, show a snackbar or toast message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isBookmarked ? 'Bookmark removed' : 'Article bookmarked'),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
-        ],
         elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Article image with rounded corners and shadow
             if (widget.article['urlToImage'] != null && widget.article['urlToImage'].isNotEmpty)
               Stack(
                 children: [
@@ -225,7 +122,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
                       ),
                     ),
                   ),
-                  // Optional: Floating bookmark button over image
+                  // Overlay bookmark icon (only one!)
                   Positioned(
                     top: 28,
                     right: 32,
@@ -237,47 +134,42 @@ class _ArticleScreenState extends State<ArticleScreen> {
                         child: IconButton(
                           icon: Icon(
                             isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                            color: Colors.red,
+                            color: isBookmarked ? Colors.yellow[700] : Colors.red,
                             size: 28,
                           ),
                           tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
                           onPressed: () async {
-                            // Toggle bookmark state
-                            context.read<BookmarkProvider>().toggleBookmark(widget.article);
-                            setState(() {}); // <-- This will rebuild the widget and update the icon
-
-                            // Get the current user's email
                             final email = FirebaseAuth.instance.currentUser?.email;
                             final articleId = widget.article['docId'];
                             final mainCategory = widget.article['mainCategory'];
                             final subCategory = widget.article['subCategory'];
 
-                            // Add or remove bookmark in the database
-                            if (isBookmarked) {
-                              // If already bookmarked, remove the bookmark
-                              if (email != null) {
-                                UserDataService.removeBookmark(email, articleId, subCategory);
+                            // 1. Capture the previous state
+                            final wasBookmarked = bookmarkProvider.isBookmarked(widget.article);
+
+                            // 2. Toggle local state
+                            await bookmarkProvider.toggleBookmark(widget.article);
+
+                            // 3. Use the previous state to determine Firestore action
+                            if (email != null && articleId != null && mainCategory != null && subCategory != null) {
+                              if (wasBookmarked) {
+                                // If it was bookmarked, now we're removing
+                                await UserDataService.removeBookmark(email, articleId, mainCategory);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Bookmark removed')),
+                                );
+                              } else {
+                                // If it was not bookmarked, now we're adding
+                                await UserDataService.addBookmark(email, articleId, mainCategory, subCategory);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Article bookmarked')),
+                                );
                               }
                             } else {
-                              // If not bookmarked, add the bookmark
-                              if (email != null) {
-                                print('Bookmarking: $articleId, $mainCategory, $subCategory');
-                                try {
-                                  await UserDataService.addBookmark(email, articleId, mainCategory, subCategory);
-                                  print('Bookmark saved to Firestore');
-                                } catch (e) {
-                                  print('Error saving bookmark: $e');
-                                }
-                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Cannot bookmark: missing article info.')),
+                              );
                             }
-
-                            // Optionally, show a snackbar or toast message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(isBookmarked ? 'Bookmark removed' : 'Article bookmarked'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
                           },
                         ),
                       ),

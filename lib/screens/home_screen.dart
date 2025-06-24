@@ -14,11 +14,14 @@ class HomeScreen extends StatefulWidget {
   final String? initialMainCategory;
   final String? initialSubCategory;
 
+
   const HomeScreen({
     super.key,
     this.initialMainCategory,
     this.initialSubCategory,
   });
+
+  
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -36,7 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final Map<String, List<String>> mainToSubCategories = {
     "Local": ["Top", "Business", "Sports", "Entertainment", "Technology"],
-    "Foreign": ["Top", "Sports", "Business", "Technology", "Politics", "Entertainment"],
+    "Foreign": [
+      "Top",
+      "Sports",
+      "Business",
+      "Technology",
+      "Politics",
+      "Entertainment"
+    ],
   };
 
   final Map<String, String> categoryToQuery = {
@@ -54,12 +64,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Use initialMainCategory and initialSubCategory if provided
     if (widget.initialMainCategory != null &&
-        (widget.initialMainCategory == "Local" || widget.initialMainCategory == "Foreign")) {
+        (widget.initialMainCategory == "Local" ||
+            widget.initialMainCategory == "Foreign")) {
       _selectedMainCategory = widget.initialMainCategory!;
       _selectedSubCategory = widget.initialSubCategory ??
           (mainToSubCategories[_selectedMainCategory]?.first ?? "Top");
       _fetchNews(_selectedSubCategory!);
-    } else if (widget.initialMainCategory != null && widget.initialMainCategory == "For you") {
+    } else if (widget.initialMainCategory != null &&
+        widget.initialMainCategory == "For you") {
       _selectedMainCategory = "For you";
       _selectedSubCategory = null;
       setState(() => newsArticles = []);
@@ -80,10 +92,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .where('subCategory', isEqualTo: category)
           .get();
 
-      final articles = snapshot.docs.map((doc) => {
-        ...doc.data(),
-        'docId': doc.id,
-      }).toList();
+      final articles = snapshot.docs
+          .map((doc) => {
+                ...doc.data(),
+                'docId': doc.id,
+              })
+          .toList();
 
       setState(() {
         newsArticles = articles;
@@ -107,12 +121,11 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
         final query = categoryToQuery[category] ?? 'news';
-        final freshArticles =
-            await ApiService.fetchAndDisplayArticles(
-              query: query,
-              mainCategory: _selectedMainCategory,
-              subCategory: category,
-            );
+        final freshArticles = await ApiService.fetchAndDisplayArticles(
+          query: query,
+          mainCategory: _selectedMainCategory,
+          subCategory: category,
+        );
 
         // Now fetch from Firestore for display (with docId)
         final articles = await ApiService.fetchArticlesFromFirestore(
@@ -279,7 +292,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isSelected ? Colors.white : Colors.red,
-                        foregroundColor: isSelected ? Colors.black : Colors.white,
+                        foregroundColor:
+                            isSelected ? Colors.black : Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22)),
                         elevation: isSelected ? 4 : 0,
@@ -299,10 +313,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNewsContent(BuildContext context) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.red));
-    }
+Widget _buildNewsContent(BuildContext context) {
+  final bookmarkProvider = context.watch<BookmarkProvider>();
+  if (!bookmarkProvider.isLoaded) {
+    return const Center(child: CircularProgressIndicator(color: Colors.red));
+  }
     if (newsArticles.isEmpty) {
       return const Center(
         child: Text(
@@ -363,14 +378,27 @@ class _HomeScreenState extends State<HomeScreen> {
                           Align(
                             alignment: Alignment.bottomRight,
                             child: IconButton(
-                              icon: Icon(
-                                bookmarked ? Icons.star : Icons.star_border,
-                                color: bookmarked ? Colors.yellow[700] : Colors.grey,
-                              ),
-                              onPressed: () => context
-                                  .read<BookmarkProvider>()
-                                  .toggleBookmark(article),
-                            ),
+  icon: Icon(
+    bookmarked ? Icons.star : Icons.star_border,
+    color: bookmarked ? Colors.yellow[700] : Colors.grey,
+  ),
+  onPressed: () async {
+    final bookmarkProvider = context.read<BookmarkProvider>();
+    final wasBookmarked = bookmarkProvider.isBookmarked(article);
+    await bookmarkProvider.toggleBookmark(article);
+
+    // Optional: Show feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          wasBookmarked ? 'Bookmark removed' : 'Article bookmarked'
+        ),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  },
+),
+
                           ),
                         ],
                       ),
@@ -392,7 +420,8 @@ class _HomeScreenState extends State<HomeScreen> {
       unselectedItemColor: Colors.white70,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.video_library), label: 'Videos'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.video_library), label: 'Videos'),
         BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
       ],
       currentIndex: 0,
@@ -407,7 +436,8 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // Example function to fetch articles from Firestore asynchronously
-Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore({String? mainCategory, String? subCategory}) async {
+Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore(
+    {String? mainCategory, String? subCategory}) async {
   Query query = FirebaseFirestore.instance.collection('articles');
   if (mainCategory != null) {
     query = query.where('mainCategory', isEqualTo: mainCategory);

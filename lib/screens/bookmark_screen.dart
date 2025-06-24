@@ -122,23 +122,24 @@ class BookmarkScreen extends StatelessWidget {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      IconButton(
-                                        icon: Icon(
-                                          isBookmarked
-                                              ? Icons.star
-                                              : Icons.star_border,
-                                          color: isBookmarked
-                                              ? Colors.yellow[700]
-                                              : Colors.grey,
-                                          size: 28,
-                                        ),
-                                        onPressed: () => context
-                                            .read<BookmarkProvider>()
-                                            .toggleBookmark(article),
-                                        tooltip: isBookmarked
-                                            ? 'Remove Bookmark'
-                                            : 'Add Bookmark',
+                                     IconButton(
+                                      icon: Icon(
+                                        isBookmarked ? Icons.star : Icons.star_border,
+                                        color: isBookmarked ? Colors.yellow[700] : Colors.grey,
+                                        size: 28,
                                       ),
+                                      onPressed: () => context.read<BookmarkProvider>().toggleBookmark(article),
+                                      tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
+                                    ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        article['source']?['name'] ?? 'Unknown',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey,
+                                        ),
+                                      ),  
+
                                     ],
                                   ),
                                 ],

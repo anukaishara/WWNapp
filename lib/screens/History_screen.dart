@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/history_provider.dart';
 import 'article_screen.dart' hide IconButton;
-import 'package:firebase_auth/firebase_auth.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -10,13 +9,15 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final historyProvider = context.watch<HistoryProvider>();
-    final historyArticles = historyProvider.historyArticles;
 
-    // Get current user's email
-    final email = FirebaseAuth.instance.currentUser?.email;
-    if (email != null) {
-      // await UserDataService.setPreferences(email, preferences);
+    // Show loading spinner if history is not loaded yet
+    if (!historyProvider.isLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Colors.red)),
+      );
     }
+
+    final historyArticles = historyProvider.historyArticles;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
@@ -40,7 +41,31 @@ class HistoryScreen extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.white),
               tooltip: "Clear History",
-              onPressed: () => historyProvider.clearHistory(),
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Clear History?'),
+                    content: const Text('This will remove all your history items.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Clear', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  await historyProvider.clearHistory();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('History cleared')),
+                  );
+                }
+              },
             ),
         ],
       ),
