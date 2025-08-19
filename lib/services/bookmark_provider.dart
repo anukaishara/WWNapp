@@ -13,47 +13,59 @@ class BookmarkProvider extends ChangeNotifier {
     _loadBookmarks();
   }
 
-  // Load bookmarks from local storage
-  Future<void> _loadBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getStringList('bookmarked_articles') ?? [];
-    _bookmarkedArticles = data
-        .map((json) => Map<String, dynamic>.from(jsonDecode(json)))
-        .toList();
-    _isLoaded = true;
-    notifyListeners();
+  // Pick a unique ID (prefer docId, fallback to url, fallback to title)
+  String? _getArticleId(Map<String, dynamic> article) {
+    return article['docId'] ?? article['url'] ?? article['title'];
   }
 
-  // Toggle bookmark (add/remove) locally
+  // Load bookmarks from local storage
+Future<void> _loadBookmarks() async {
+  final prefs = await SharedPreferences.getInstance();
+  final data = prefs.getStringList('bookmarked_articles') ?? [];
+  _bookmarkedArticles = data
+      .map((json) => jsonDecode(json) as Map<String, dynamic>)
+      .toList();
+  _isLoaded = true;
+  notifyListeners();
+}
+
+  // Toggle bookmark (add/remove)
   Future<void> toggleBookmark(Map<String, dynamic> article) async {
-    final articleId = article['docId'];
+    final articleId = _getArticleId(article);
     if (articleId == null) return;
+
     final prefs = await SharedPreferences.getInstance();
-    final isBookmarked = _bookmarkedArticles.any((item) => item['docId'] == articleId);
+    final isBookmarked =
+        _bookmarkedArticles.any((item) => _getArticleId(item) == articleId);
 
     if (isBookmarked) {
-      _bookmarkedArticles.removeWhere((item) => item['docId'] == articleId);
+      _bookmarkedArticles.removeWhere((item) => _getArticleId(item) == articleId);
     } else {
       _bookmarkedArticles.add(article);
     }
 
-    final updatedData = _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
+    final updatedData =
+        _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
     await prefs.setStringList('bookmarked_articles', updatedData);
     notifyListeners();
   }
 
   // Check if an article is bookmarked
   bool isBookmarked(Map<String, dynamic> article) {
-    final articleId = article['docId'];
-    return _bookmarkedArticles.any((item) => item['docId'] == articleId);
+    final articleId = _getArticleId(article);
+    return _bookmarkedArticles.any((item) => _getArticleId(item) == articleId);
   }
 
-  // Remove a bookmark explicitly
+  // Remove a bookmark
   Future<void> removeBookmark(Map<String, dynamic> article) async {
-    final articleId = article['docId'];
+    final articleId = _getArticleId(article);
+    if (articleId == null) return;
+
     final prefs = await SharedPreferences.getInstance();
-    _bookmarkedArticles.removeWhere((item) => item['docId'] == articleId);
-    final updatedData = _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
+    _bookmarkedArticles.removeWhere((item) => _getArticleId(item) == articleId);
+
+    final updatedData =
+        _bookmarkedArticles.map((item) => jsonEncode(item)).toList();
     await prefs.setStringList('bookmarked_articles', updatedData);
     notifyListeners();
   }

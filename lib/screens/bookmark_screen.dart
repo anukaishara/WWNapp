@@ -61,7 +61,8 @@ class BookmarkScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        // Center image and text vertically within the card
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           // Article image with rounded corners
                           if (article['urlToImage'] != null &&
@@ -98,9 +99,11 @@ class BookmarkScreen extends StatelessWidget {
                             ),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+                              // Reduced vertical padding to help centering
+                              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
                                     article['title'] ?? 'No Title',
@@ -119,28 +122,47 @@ class BookmarkScreen extends StatelessWidget {
                                           fontSize: 14, color: Colors.grey),
                                     ),
                                   const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                     IconButton(
-                                      icon: Icon(
-                                        isBookmarked ? Icons.star : Icons.star_border,
-                                        color: isBookmarked ? Colors.yellow[700] : Colors.grey,
-                                        size: 28,
-                                      ),
-                                      onPressed: () => context.read<BookmarkProvider>().toggleBookmark(article),
-                                      tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
-                                    ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        article['source']?['name'] ?? 'Unknown',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey,
-                                        ),
-                                      ),  
-
-                                    ],
+                                  // Prepare source name before the Row widget
+                                  Builder(
+                                    builder: (context) {
+                                      final rawSource = article['source'];
+                                      final sourceName = rawSource is Map
+                                          ? (rawSource['name'] ?? 'Unknown')
+                                          : (rawSource is String
+                                              ? rawSource
+                                              : 'Unknown');
+                                      return Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              isBookmarked
+                                                  ? Icons.star
+                                                  : Icons.star_border,
+                                              color: isBookmarked
+                                                  ? Colors.yellow[700]
+                                                  : Colors.grey,
+                                              size: 28,
+                                            ),
+                                            onPressed: () => context
+                                                .read<BookmarkProvider>()
+                                                .toggleBookmark(article),
+                                            tooltip: isBookmarked
+                                                ? 'Remove Bookmark'
+                                                : 'Add Bookmark',
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            sourceName,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ],
                               ),

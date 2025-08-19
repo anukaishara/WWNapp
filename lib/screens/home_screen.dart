@@ -9,158 +9,159 @@ import 'search_screen.dart';
 import 'package:flutter/services.dart';
 import '../services/scraping.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+// cached_network_image no longer used after simplification
 
 class HomeScreen extends StatefulWidget {
   final String? initialMainCategory;
   final String? initialSubCategory;
-
-
-  const HomeScreen({
-    super.key,
-    this.initialMainCategory,
-    this.initialSubCategory,
-  });
-
-  
-
+  const HomeScreen(
+      {super.key, this.initialMainCategory, this.initialSubCategory});
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _selectedMainCategory = "For you";
+  String _selectedMainCategory = 'For you';
   String? _selectedSubCategory;
   List<Map<String, dynamic>> newsArticles = [];
   final Map<String, List<Map<String, dynamic>>> cachedNews = {};
   bool isLoading = false;
-
   final ScrollController _scrollController = ScrollController();
   final Map<String, double> _scrollPositions = {};
 
   final Map<String, List<String>> mainToSubCategories = {
-    "Local": ["Top", "Business", "Sports", "Entertainment", "Technology"],
-    "Foreign": [
-      "Top",
-      "Sports",
-      "Business",
-      "Technology",
-      "Politics",
-      "Entertainment"
+    'Local': ['Top', 'Business', 'Sports', 'Entertainment', 'Technology'],
+    'Foreign': [
+      'Top',
+      'Sports',
+      'Business',
+      'Technology',
+      'Politics',
+      'Entertainment'
     ],
   };
-
   final Map<String, String> categoryToQuery = {
-    "Top": "news",
-    "Sports": "sports",
-    "Business": "business",
-    "Technology": "technology",
-    "Politics": "politics",
-    "Entertainment": "entertainment",
+    'Top': 'news',
+    'Sports': 'sports',
+    'Business': 'business',
+    'Technology': 'technology',
+    'Politics': 'politics',
+    'Entertainment': 'entertainment',
   };
 
   @override
   void initState() {
     super.initState();
-
-    // Use initialMainCategory and initialSubCategory if provided
     if (widget.initialMainCategory != null &&
-        (widget.initialMainCategory == "Local" ||
-            widget.initialMainCategory == "Foreign")) {
+        (widget.initialMainCategory == 'Local' ||
+            widget.initialMainCategory == 'Foreign')) {
       _selectedMainCategory = widget.initialMainCategory!;
       _selectedSubCategory = widget.initialSubCategory ??
-          (mainToSubCategories[_selectedMainCategory]?.first ?? "Top");
+          mainToSubCategories[_selectedMainCategory]!.first;
       _fetchNews(_selectedSubCategory!);
-    } else if (widget.initialMainCategory != null &&
-        widget.initialMainCategory == "For you") {
-      _selectedMainCategory = "For you";
-      _selectedSubCategory = null;
-      setState(() => newsArticles = []);
+    } else if (widget.initialMainCategory == 'For you') {
+      _selectedMainCategory = 'For you';
     }
   }
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
     setState(() => isLoading = true);
-
-    if (_selectedMainCategory == "Local") {
-      // 1. Scrape and save to Firestore (already done in scraping.dart)
-      await scrapeLocalCategory(category);
-
-      // 2. Fetch from Firestore (with docId, mainCategory, subCategory)
-      final snapshot = await FirebaseFirestore.instance
-          .collection('articles')
-          .where('mainCategory', isEqualTo: 'Local')
-          .where('subCategory', isEqualTo: category)
-          .get();
-
-      final articles = snapshot.docs
-          .map((doc) => {
-                ...doc.data(),
-                'docId': doc.id,
-              })
-          .toList();
-
-      setState(() {
-        newsArticles = articles;
-        cachedNews[category] = articles;
-        isLoading = false;
-      });
+    if (_selectedMainCategory == 'Local') {
+      // Scrape first (includes image URLs) and show immediately
+      final scraped = await scrapeLocalCategory(category);
+      if (mounted) {
+        setState(() {
+          newsArticles = scraped;
+          cachedNews[category] = scraped;
+        });
+        _debugPrintFirstImages();
+      }
+      // Firestore saving happens inside scrapeLocalCategory; we can optionally refresh later
+      setState(() => isLoading = false);
       return;
     }
-
-    setState(() {
-      isLoading = true;
-    });
-
     try {
-      if (_selectedMainCategory == "For you") {
-        setState(() => newsArticles = []);
-      } else if (_selectedMainCategory == "Foreign") {
+      if (_selectedMainCategory == 'Foreign') {
         if (!forceRefresh && cachedNews.containsKey(category)) {
-          setState(() {
-            newsArticles = cachedNews[category] ?? [];
-          });
+          newsArticles = cachedNews[category]!;
         }
         final query = categoryToQuery[category] ?? 'news';
-        final freshArticles = await ApiService.fetchAndDisplayArticles(
-          query: query,
-          mainCategory: _selectedMainCategory,
-          subCategory: category,
-        );
-
-        // Now fetch from Firestore for display (with docId)
-        final articles = await ApiService.fetchArticlesFromFirestore(
-          mainCategory: _selectedMainCategory,
-          subCategory: category,
-        );
-
-        // Display 'articles' in your UI
-        setState(() {
-          newsArticles = articles;
-          cachedNews[category] = freshArticles;
-        });
-      } else if (_selectedMainCategory == "Local") {
-        final scrapedArticles = await scrapeLocalCategory(category);
-        setState(() {
-          newsArticles = scrapedArticles;
-        });
+        final fresh = await ApiService.fetchAndDisplayArticles(
+            query: query,
+            mainCategory: _selectedMainCategory,
+            subCategory: category);
+        if (mounted) {
+          setState(() {
+            // Show fresh API results immediately (they contain image URLs)
+            newsArticles = fresh;
+            cachedNews[category] = fresh;
+          });
+          _debugPrintFirstImages();
+        }
+        // (Optional) Later we could reconcile with Firestore if needed
+      } else if (_selectedMainCategory == 'For you') {
+        setState(() => newsArticles = []);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Failed to fetch news: $e'),
-            backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to fetch news: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
     } finally {
-      setState(() => isLoading = false);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final key = _selectedSubCategory ?? "For you";
-        if (_scrollPositions.containsKey(key)) {
-          _scrollController.jumpTo(_scrollPositions[key]!);
-        } else {
-          _scrollController.jumpTo(0);
-        }
-      });
+      if (mounted) {
+        setState(() => isLoading = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final key = _selectedSubCategory ?? 'For you';
+          _scrollController.jumpTo(_scrollPositions[key] ?? 0);
+        });
+      }
     }
+  }
+
+  // Helper to print first few image URLs for debugging
+  void _debugPrintFirstImages() {
+    if (newsArticles.isEmpty) return;
+    // Avoid spamming console
+    final sample =
+        newsArticles.take(5).map((a) => _extractImageUrl(a) ?? '-').toList();
+    // ignore: avoid_print
+    print('🖼️ Sample image URLs: $sample');
+  }
+
+  // Extract & normalize possible image keys, fallback order
+  String? _extractImageUrl(Map<String, dynamic> article) {
+    final candidates = [
+      article['urlToImage'],
+      article['image'],
+      article['thumbnail'],
+      article['img'],
+    ].whereType<String>().map((s) => s.trim()).where((s) => s.isNotEmpty);
+    for (final c in candidates) {
+      final normalized = _normalizeUrl(c);
+      if (normalized != null) return normalized;
+    }
+    return null;
+  }
+
+  String? _normalizeUrl(String raw) {
+    var u = raw.trim();
+    if (u.isEmpty) return null;
+    if (u.startsWith('data:')) return null; // ignore data URIs
+    if (u.startsWith('http://')) {
+      // Upgrade to https if possible
+      u = u.replaceFirst('http://', 'https://');
+    }
+    if (u.startsWith('//')) u = 'https:$u';
+    if (!u.startsWith('http')) {
+      // Treat as relative to AdaDerana domain (most local sources)
+      if (!u.startsWith('/')) u = '/$u';
+      u = 'https://www.adaderana.lk$u';
+    }
+    return u;
   }
 
   @override
@@ -172,10 +173,9 @@ class _HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut);
           return false;
-        } else {
-          SystemNavigator.pop();
-          return true;
         }
+        SystemNavigator.pop();
+        return true;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -197,11 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
-                if (updated == true) {
-                  setState(() {});
-                }
+                if (updated == true) setState(() {});
               },
-            ),
+            )
           ],
           elevation: 2,
           shadowColor: Colors.black54,
@@ -221,9 +219,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryFilters() {
-    final mainCategories = ["For you", "Local", "Foreign"];
+    final mainCategories = ['For you', 'Local', 'Foreign'];
     final subCategories = mainToSubCategories[_selectedMainCategory] ?? [];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -232,9 +229,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: mainCategories.length,
-            itemBuilder: (context, index) {
-              final mainCat = mainCategories[index];
-              final isSelected = _selectedMainCategory == mainCat;
+            itemBuilder: (context, i) {
+              final mainCat = mainCategories[i];
+              final selected = _selectedMainCategory == mainCat;
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: ElevatedButton(
@@ -242,33 +239,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     setState(() {
                       _selectedMainCategory = mainCat;
                       _selectedSubCategory = null;
-                      if (mainCat == "For you") {
+                      if (mainCat == 'For you') {
                         newsArticles = [];
                       } else {
-                        final firstSub = mainToSubCategories[mainCat]!.first;
-                        _selectedSubCategory = firstSub;
-                        _fetchNews(firstSub);
+                        final first = mainToSubCategories[mainCat]!.first;
+                        _selectedSubCategory = first;
+                        _fetchNews(first);
                       }
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isSelected ? Colors.white : Colors.red,
-                    foregroundColor: isSelected ? Colors.black : Colors.white,
+                    backgroundColor: selected ? Colors.white : Colors.red,
+                    foregroundColor: selected ? Colors.black : Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(22)),
-                    elevation: isSelected ? 4 : 0,
+                    elevation: selected ? 4 : 0,
                     shadowColor: Colors.black26,
                   ),
-                  child: Text(
-                    mainCat,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
+                  child: Text(mainCat,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
               );
             },
           ),
         ),
-        if (_selectedMainCategory != "For you")
+        if (_selectedMainCategory != 'For you')
           Padding(
             padding: const EdgeInsets.only(top: 12, left: 8),
             child: SizedBox(
@@ -276,139 +271,113 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: subCategories.length,
-                itemBuilder: (context, index) {
-                  final subCat = subCategories[index];
-                  final isSelected = _selectedSubCategory == subCat;
+                itemBuilder: (context, i) {
+                  final subCat = subCategories[i];
+                  final selected = _selectedSubCategory == subCat;
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: ElevatedButton(
                       onPressed: () {
-                        if (!isSelected) {
-                          setState(() {
-                            _selectedSubCategory = subCat;
-                          });
+                        if (!selected) {
+                          setState(() => _selectedSubCategory = subCat);
                           _fetchNews(subCat);
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isSelected ? Colors.white : Colors.red,
-                        foregroundColor:
-                            isSelected ? Colors.black : Colors.white,
+                        backgroundColor: selected ? Colors.white : Colors.red,
+                        foregroundColor: selected ? Colors.black : Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22)),
-                        elevation: isSelected ? 4 : 0,
+                        elevation: selected ? 4 : 0,
                         shadowColor: Colors.black26,
                       ),
-                      child: Text(
-                        subCat,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                      child: Text(subCat,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   );
                 },
               ),
             ),
-          ),
+          )
       ],
     );
   }
 
-Widget _buildNewsContent(BuildContext context) {
-  final bookmarkProvider = context.watch<BookmarkProvider>();
-  if (!bookmarkProvider.isLoaded) {
-    return const Center(child: CircularProgressIndicator(color: Colors.red));
-  }
+  Widget _buildNewsContent(BuildContext context) {
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    if (!bookmarkProvider.isLoaded || isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Colors.red));
+    }
     if (newsArticles.isEmpty) {
       return const Center(
-        child: Text(
-          'No news available',
-          style: TextStyle(fontSize: 18, color: Colors.grey),
-        ),
-      );
+          child: Text('No news available',
+              style: TextStyle(fontSize: 18, color: Colors.grey)));
     }
     return RefreshIndicator(
       onRefresh: () async =>
-          await _fetchNews(_selectedSubCategory ?? "Top", forceRefresh: true),
-      child: ListView.builder(
+          await _fetchNews(_selectedSubCategory ?? 'Top', forceRefresh: true),
+      child: CustomScrollView(
         controller: _scrollController,
-        padding: const EdgeInsets.only(bottom: 60),
-        itemCount: newsArticles.length,
-        itemBuilder: (context, index) {
-          final article = newsArticles[index];
-          final bookmarkProvider = context.watch<BookmarkProvider>();
-          final bookmarked = bookmarkProvider.isBookmarked(article);
-          return GestureDetector(
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => ArticleScreen(article: article))),
-            child: Card(
-              margin:
-                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0)),
-              elevation: 4,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (article['urlToImage'] != null &&
-                      article['urlToImage'].isNotEmpty)
-                    ClipRRect(
-                      borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(12.0)),
-                      child: Image.network(article['urlToImage'],
-                          height: 100, width: 100, fit: BoxFit.cover),
-                    )
-                  else
-                    Container(
-                        height: 100,
-                        width: 100,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.image)),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(article['title'] ?? 'No Title',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 18)),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: IconButton(
-  icon: Icon(
-    bookmarked ? Icons.star : Icons.star_border,
-    color: bookmarked ? Colors.yellow[700] : Colors.grey,
-  ),
-  onPressed: () async {
-    final bookmarkProvider = context.read<BookmarkProvider>();
-    final wasBookmarked = bookmarkProvider.isBookmarked(article);
-    await bookmarkProvider.toggleBookmark(article);
-
-    // Optional: Show feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          wasBookmarked ? 'Bookmark removed' : 'Article bookmarked'
-        ),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  },
-),
-
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            sliver: SliverToBoxAdapter(
+              child: _FeaturedArticle(
+                article: newsArticles.first,
+                isBookmarked: bookmarkProvider.isBookmarked(newsArticles.first),
+                onBookmarkToggle: () async {
+                  final was = bookmarkProvider.isBookmarked(newsArticles.first);
+                  await bookmarkProvider.toggleBookmark(newsArticles.first);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(
+                            was ? 'Bookmark removed' : 'Article bookmarked'),
+                        duration: const Duration(seconds: 1)));
+                  }
+                },
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ArticleScreen(
+                            article: newsArticles.first,
+                          )),
+                ),
               ),
             ),
-          );
-        },
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+            sliver: SliverMasonryGrid.count(
+              crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childCount: newsArticles.length - 1,
+              itemBuilder: (ctx, i) {
+                final article = newsArticles[i + 1];
+                final bookmarked = bookmarkProvider.isBookmarked(article);
+                return _ArticleTile(
+                  article: article,
+                  bookmarked: bookmarked,
+                  onBookmark: () async {
+                    final was = bookmarkProvider.isBookmarked(article);
+                    await bookmarkProvider.toggleBookmark(article);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(
+                              was ? 'Bookmark removed' : 'Article bookmarked'),
+                          duration: const Duration(seconds: 1)));
+                    }
+                  },
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => ArticleScreen(article: article)),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -425,8 +394,8 @@ Widget _buildNewsContent(BuildContext context) {
         BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
       ],
       currentIndex: 0,
-      onTap: (index) {
-        if (index == 2) {
+      onTap: (i) {
+        if (i == 2) {
           Navigator.push(
               context, MaterialPageRoute(builder: (_) => const SearchScreen()));
         }
@@ -435,24 +404,201 @@ Widget _buildNewsContent(BuildContext context) {
   }
 }
 
-// Example function to fetch articles from Firestore asynchronously
-Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore(
-    {String? mainCategory, String? subCategory}) async {
-  Query query = FirebaseFirestore.instance.collection('articles');
-  if (mainCategory != null) {
-    query = query.where('mainCategory', isEqualTo: mainCategory);
+// Pick best image from common keys and normalize simple relative/protocol-less cases
+String _pickImage(Map<String, dynamic> article) {
+  final keys = ['urlToImage', 'image', 'thumbnail', 'img'];
+  for (final k in keys) {
+    final v = article[k];
+    if (v is String && v.trim().isNotEmpty) {
+      var u = v.trim();
+      if (u.startsWith('//')) u = 'https:$u';
+      if (u.startsWith('http://')) u = u.replaceFirst('http://', 'https://');
+      if (!u.startsWith('http')) {
+        if (!u.startsWith('/')) u = '/$u';
+        u = 'https://www.adaderana.lk$u';
+      }
+      if (u.startsWith('data:')) continue; // skip data URIs
+      return u;
+    }
   }
-  if (subCategory != null) {
-    query = query.where('subCategory', isEqualTo: subCategory);
+  return '';
+}
+
+class _FeaturedArticle extends StatelessWidget {
+  final Map<String, dynamic> article;
+  final bool isBookmarked;
+  final VoidCallback onBookmarkToggle;
+  final VoidCallback onTap;
+  const _FeaturedArticle({
+    required this.article,
+    required this.isBookmarked,
+    required this.onBookmarkToggle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _pickImage(article);
+    return GestureDetector(
+      onTap: onTap,
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.broken_image),
+                      ),
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.image),
+                    ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black87],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: Text(
+                article['title'] ?? 'No Title',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: Icon(
+                    isBookmarked ? Icons.star : Icons.star_border,
+                    color: isBookmarked ? Colors.yellow[700] : Colors.white,
+                  ),
+                  onPressed: onBookmarkToggle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-  final snapshot = await query.get();
-  return snapshot.docs.map((doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return {
-      ...data,
-      'docId': doc.id,
-      'mainCategory': data['mainCategory'],
-      'subCategory': data['subCategory'],
-    };
-  }).toList();
+}
+
+class _ArticleTile extends StatelessWidget {
+  final Map<String, dynamic> article;
+  final bool bookmarked;
+  final VoidCallback onBookmark;
+  final VoidCallback onTap;
+  const _ArticleTile({
+    required this.article,
+    required this.bookmarked,
+    required this.onBookmark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _pickImage(article);
+    // Debug once per tile build when empty
+    if (imageUrl.isEmpty) {
+      // ignore: avoid_print
+      print(
+          '🔍 Missing image for article title="${article['title'] ?? ''}" keys: urlToImage=${article['urlToImage']} image=${article['image']}');
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Material(
+        color: Colors.white,
+        elevation: 2,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (imageUrl.isNotEmpty)
+              AspectRatio(
+                aspectRatio: 4 / 3,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.broken_image),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              child: Text(
+                article['title'] ?? 'No Title',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    bookmarked ? Icons.star : Icons.star_border,
+                    color: bookmarked ? Colors.yellow[700] : Colors.grey,
+                  ),
+                  onPressed: onBookmark,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Example helper (if needed elsewhere)
+  Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore(
+      {String? mainCategory, String? subCategory}) async {
+    Query query = FirebaseFirestore.instance.collection('articles');
+    if (mainCategory != null)
+      query = query.where('mainCategory', isEqualTo: mainCategory);
+    if (subCategory != null)
+      query = query.where('subCategory', isEqualTo: subCategory);
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => {...doc.data() as Map<String, dynamic>, 'docId': doc.id})
+        .toList();
+  }
 }

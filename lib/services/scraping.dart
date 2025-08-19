@@ -30,7 +30,8 @@ String removeMoreMarkers(String text) {
   return cleaned;
 }
 
-Future<List<Map<String, dynamic>>> scrapeLocalCategory(String category, {bool saveToFirestore = true}) async {
+Future<List<Map<String, dynamic>>> scrapeLocalCategory(String category,
+    {bool saveToFirestore = true}) async {
   final url = localCategoryUrls[category];
   if (url == null) return [];
 
@@ -42,27 +43,30 @@ Future<List<Map<String, dynamic>>> scrapeLocalCategory(String category, {bool sa
     if (response.statusCode != 200) return [];
     final rssFeed = RssFeed.parse(response.body);
 
-    scrapedArticles = rssFeed.items.map((item) {
-      // Try to extract image from enclosure or media:content
-      String? imageUrl;
-      if (item.enclosure?.url != null) {
-        imageUrl = item.enclosure!.url;
-      } else if (item.media?.contents.isNotEmpty == true) {
-        imageUrl = item.media!.contents.first.url;
-      }
-      return {
-        'title': item.title ?? '',
-        'description': htmlToPlainText(item.description ?? ''),
-        'url': item.link ?? '',
-        'urlToImage': imageUrl,
-        'publishedAt': item.pubDate,
-        'content': htmlToPlainText(item.content?.value ?? ''),
-        'source': 'BizEnglish AdaDerana',
-        'mainCategory': "Local",
-        'subCategory': category,
-        // 'savedAt' will be added in Firestore
-      };
-    }).where((a) => a['url'] != null && a['url'] != '').toList();
+    scrapedArticles = rssFeed.items
+        .map((item) {
+          // Try to extract image from enclosure or media:content
+          String? imageUrl;
+          if (item.enclosure?.url != null) {
+            imageUrl = item.enclosure!.url;
+          } else if (item.media?.contents.isNotEmpty == true) {
+            imageUrl = item.media!.contents.first.url;
+          }
+          return {
+            'title': item.title ?? '',
+            'description': htmlToPlainText(item.description ?? ''),
+            'url': item.link ?? '',
+            'urlToImage': imageUrl,
+            'publishedAt': item.pubDate,
+            'content': htmlToPlainText(item.content?.value ?? ''),
+            'source': 'BizEnglish AdaDerana',
+            'mainCategory': "Local",
+            'subCategory': category,
+            // 'savedAt' will be added in Firestore
+          };
+        })
+        .where((a) => a['url'] != null && a['url'] != '')
+        .toList();
   } else {
     // Ada Derana structure (Sports, Entertainment, Top, Technology)
     final response = await http.get(Uri.parse(url));
@@ -70,36 +74,47 @@ Future<List<Map<String, dynamic>>> scrapeLocalCategory(String category, {bool sa
     final document = html_parser.parse(response.body);
 
     final articles = <Map<String, dynamic>>[];
-    final newsItems = document.querySelectorAll('.news-story, .news-item, .news-box, .news-content, .news-title, .news-image');
+    final newsItems = document.querySelectorAll(
+        '.news-story, .news-item, .news-box, .news-content, .news-title, .news-image');
 
     // You may need to adjust selectors based on actual HTML structure
     for (final element in newsItems) {
-      final titleElement = element.querySelector('.news-title') ?? element.querySelector('h2');
+      final titleElement =
+          element.querySelector('.news-title') ?? element.querySelector('h2');
       final linkElement = titleElement?.querySelector('a');
       final imageElement = element.querySelector('img');
-      final descElement = element.querySelector('.news-summary') ?? element.querySelector('p');
+      final descElement =
+          element.querySelector('.news-summary') ?? element.querySelector('p');
 
       final url = linkElement?.attributes['href'] ?? '';
       if (url.isEmpty) continue;
+
+      // Image extraction: prefer data-src / data-original / src
+      String? rawImg = imageElement?.attributes['data-src'] ??
+          imageElement?.attributes['data-original'] ??
+          imageElement?.attributes['src'];
+      final normalizedImg = _normalizeAdaDeranaImage(rawImg);
 
       articles.add({
         'title': titleElement?.text.trim() ?? '',
         'description': descElement?.text.trim() ?? '',
         'url': url.startsWith('http') ? url : 'https://www.adaderana.lk$url',
-        'urlToImage': imageElement?.attributes['src'],
+        'urlToImage': normalizedImg,
         'publishedAt': null, // You can try to extract date if available
-        'content': null,     // You can fetch full content if needed
+        'content': null, // You can fetch full content if needed
         'source': 'AdaDerana',
         'mainCategory': "Local",
         'subCategory': category,
       });
     }
-    scrapedArticles = articles.where((a) => a['url'] != null && a['url'] != '').toList();
+    scrapedArticles =
+        articles.where((a) => a['url'] != null && a['url'] != '').toList();
   }
 
   if (saveToFirestore) {
     // Save to Firestore in the background
-    saveLocalArticlesToFirestore(scrapedArticles, mainCategory: "Local", subCategory: category);
+    saveLocalArticlesToFirestore(scrapedArticles,
+        mainCategory: "Local", subCategory: category);
   }
 
   // Return scraped articles immediately (no docId yet)
@@ -118,7 +133,10 @@ Future<void> saveLocalArticlesToFirestore(
   int savedCount = 0;
   for (final article in articles) {
     if (article['url'] != null && article['url'] != '') {
-      final existing = await collection.where('url', isEqualTo: article['url']).limit(1).get();
+      final existing = await collection
+          .where('url', isEqualTo: article['url'])
+          .limit(1)
+          .get();
       if (existing.docs.isEmpty) {
         final docRef = collection.doc();
         batch.set(docRef, {
@@ -142,7 +160,8 @@ Future<void> saveLocalArticlesToFirestore(
 
 /// Fetches the full article content from the article's page or RSS.
 /// For business, uses the RSS content if provided. For others, scrapes Ada Derana and cleans HTML and "MORE" markers.
-Future<String> fetchFullArticleContent(String url, {String? category, String? fullContent}) async {
+Future<String> fetchFullArticleContent(String url,
+    {String? category, String? fullContent}) async {
   if (category == "Business" && fullContent != null && fullContent.isNotEmpty) {
     return htmlToPlainText(fullContent);
   }
@@ -157,4 +176,17 @@ Future<String> fetchFullArticleContent(String url, {String? category, String? fu
     return htmlToPlainText(contentElement.innerHtml);
   }
   return '';
+}
+
+/// Normalize potentially relative / protocol-relative AdaDerana image URLs to absolute https URLs.
+String? _normalizeAdaDeranaImage(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  String url = raw.trim();
+  if (url.startsWith('data:'))
+    return null; // ignore data URIs (often tracking pixels)
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('//')) return 'https:$url';
+  if (url.startsWith('/')) return 'https://www.adaderana.lk$url';
+  // If it's a relative path without leading slash
+  return 'https://www.adaderana.lk/$url';
 }

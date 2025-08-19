@@ -5,7 +5,6 @@ import 'otp_verification_screen.dart';
 import '../services/google_auth_service.dart';
 import '../services/facebook_auth_service.dart';
 import 'first_login_screen.dart';
-import '../services/user_data_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

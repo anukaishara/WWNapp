@@ -18,6 +18,10 @@ class ArticleScreen extends StatefulWidget {
 class _ArticleScreenState extends State<ArticleScreen> {
   String _fullContent = '';
   bool _isLoading = true;
+  double _fontSize = 18; // Accessible adjustable font size
+  double _scrollProgress = 0; // Reading progress 0..1
+
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -59,6 +63,45 @@ class _ArticleScreenState extends State<ArticleScreen> {
     }
   }
 
+  // Split content into readable paragraphs. If there are no blank lines, fall back to sentence grouping.
+  List<String> _paragraphs() {
+    if (_fullContent.isEmpty) return const [];
+    // Normalize line endings
+    final normalized = _fullContent.replaceAll('\r\n', '\n');
+    final rawParagraphs = normalized
+        .split(RegExp(r'\n{2,}'))
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (rawParagraphs.length > 1) return rawParagraphs;
+
+    // Fallback: create paragraphs by grouping sentences if original text had no blank lines
+    final sentences = normalized.split(RegExp(r'(?<=[.!?])\s+'));
+    final List<String> grouped = [];
+    final buffer = StringBuffer();
+    int count = 0;
+    for (final s in sentences) {
+      if (s.trim().isEmpty) continue;
+      buffer.write(s.trim());
+      buffer.write(' ');
+      count++;
+      if (count >= 3) {
+        // group 3 sentences per paragraph
+        grouped.add(buffer.toString().trim());
+        buffer.clear();
+        count = 0;
+      }
+    }
+    if (buffer.isNotEmpty) grouped.add(buffer.toString().trim());
+    return grouped.isEmpty ? [normalized] : grouped;
+  }
+
+  void _changeFontSize(double delta) {
+    setState(() {
+      _fontSize = (_fontSize + delta).clamp(14, 26);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final bookmarkProvider = context.watch<BookmarkProvider>();
@@ -69,158 +112,253 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
-      appBar: AppBar(
-        backgroundColor: Colors.red,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (widget.article['urlToImage'] != null && widget.article['urlToImage'].isNotEmpty)
-              Stack(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
+      body: Stack(
+        children: [
+          NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification.metrics.maxScrollExtent > 0) {
+                setState(() {
+                  _scrollProgress = (notification.metrics.pixels /
+                          notification.metrics.maxScrollExtent)
+                      .clamp(0, 1);
+                });
+              }
+              return false;
+            },
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                SliverAppBar(
+                  backgroundColor: Colors.red,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  pinned: true,
+                  expandedHeight: 260,
+                  elevation: 0,
+                  // Removed font size actions from app bar (moved below image)
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (widget.article['urlToImage'] != null &&
+                            widget.article['urlToImage'].isNotEmpty)
+                          Image.network(
+                            widget.article['urlToImage'],
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.high,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(color: Colors.grey[300]);
+                            },
+                            errorBuilder: (c, e, s) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.broken_image,
+                                  size: 72, color: Colors.red),
+                            ),
+                          ),
+                        // Gradient overlay for readability
+                        Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.center,
+                              colors: [Colors.black54, Colors.transparent],
+                            ),
+                          ),
+                        ),
+                        // Title at bottom
+                        Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: Text(
+                              widget.article['title'] ?? 'No Title',
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                height: 1.15,
+                                shadows: [
+                                  Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Bookmark icon overlay moved to bottom-right to avoid overlapping with AppBar action icons
+                        Positioned(
+                          bottom: 16,
+                          right: 16,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.white,
+                            radius: 24,
+                            child: IconButton(
+                              icon: Icon(
+                                isBookmarked
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border,
+                                color: isBookmarked
+                                    ? Colors.yellow[700]
+                                    : Colors.red,
+                                size: 28,
+                              ),
+                              tooltip: isBookmarked
+                                  ? 'Remove Bookmark'
+                                  : 'Add Bookmark',
+                              onPressed: () async {
+                                final email =
+                                    FirebaseAuth.instance.currentUser?.email;
+                                final articleId = widget.article['docId'];
+                                final mainCategory =
+                                    widget.article['mainCategory'];
+                                final subCategory =
+                                    widget.article['subCategory'];
+
+                                if (email == null ||
+                                    articleId == null ||
+                                    mainCategory == null ||
+                                    subCategory == null) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Cannot bookmark this article.')),
+                                    );
+                                  }
+                                  return;
+                                }
+
+                                final wasBookmarked = bookmarkProvider
+                                    .isBookmarked(widget.article);
+                                // Optimistic toggle
+                                await bookmarkProvider
+                                    .toggleBookmark(widget.article);
+                                try {
+                                  if (wasBookmarked) {
+                                    await UserDataService.removeBookmark(
+                                        email, articleId, mainCategory);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                              content:
+                                                  Text('Bookmark removed')));
+                                    }
+                                  } else {
+                                    await UserDataService.addBookmark(email,
+                                        articleId, mainCategory, subCategory);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                              content:
+                                                  Text('Article bookmarked')));
+                                    }
+                                  }
+                                } catch (e) {
+                                  // Revert optimistic toggle on failure
+                                  await bookmarkProvider
+                                      .toggleBookmark(widget.article);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text('Bookmark failed: $e')),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.network(
-                        widget.article['urlToImage'],
-                        height: 220,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        filterQuality: FilterQuality.high,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: 220,
-                            color: Colors.grey[300],
-                            child: const Center(child: CircularProgressIndicator()),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            height: 220,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.error, color: Colors.red, size: 48),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  // Overlay bookmark icon (only one!)
-                  Positioned(
-                    top: 28,
-                    right: 32,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: CircleAvatar(
-                        backgroundColor: Colors.white,
-                        radius: 24,
-                        child: IconButton(
-                          icon: Icon(
-                            isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                            color: isBookmarked ? Colors.yellow[700] : Colors.red,
-                            size: 28,
-                          ),
-                          tooltip: isBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
-                          onPressed: () async {
-                            final email = FirebaseAuth.instance.currentUser?.email;
-                            final articleId = widget.article['docId'];
-                            final mainCategory = widget.article['mainCategory'];
-                            final subCategory = widget.article['subCategory'];
-
-                            // 1. Capture the previous state
-                            final wasBookmarked = bookmarkProvider.isBookmarked(widget.article);
-
-                            // 2. Toggle local state
-                            await bookmarkProvider.toggleBookmark(widget.article);
-
-                            // 3. Use the previous state to determine Firestore action
-                            if (email != null && articleId != null && mainCategory != null && subCategory != null) {
-                              if (wasBookmarked) {
-                                // If it was bookmarked, now we're removing
-                                await UserDataService.removeBookmark(email, articleId, mainCategory);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Bookmark removed')),
-                                );
-                              } else {
-                                // If it was not bookmarked, now we're adding
-                                await UserDataService.addBookmark(email, articleId, mainCategory, subCategory);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Article bookmarked')),
-                                );
-                              }
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Cannot bookmark: missing article info.')),
-                              );
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                margin: const EdgeInsets.only(bottom: 24),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.article['title'] ?? 'No Title',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      if (widget.article['publishedAt'] != null)
-                        Text(
-                          'Published on: ${_formatDate(widget.article['publishedAt'])}',
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      const SizedBox(height: 18),
-                      _isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : (_fullContent.isNotEmpty
-                              ? Text(
-                                  _fullContent,
-                                  style: const TextStyle(fontSize: 18, height: 1.7, color: Colors.black87),
-                                )
-                              : const Text(
-                                  'Full article not available.',
-                                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                                )),
-                    ],
                   ),
                 ),
-              ),
+                // Font size controls bar (moved below header image for visibility)
+                SliverToBoxAdapter(
+                  child: Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.text_fields, color: Colors.red),
+                        const SizedBox(width: 12),
+                        Text('Font size',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        _FontSizeButton(
+                            icon: Icons.remove,
+                            onTap: () => _changeFontSize(-1)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(_fontSize.toStringAsFixed(0),
+                              style: const TextStyle(fontSize: 16)),
+                        ),
+                        _FontSizeButton(
+                            icon: Icons.add, onTap: () => _changeFontSize(1)),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 28, 22, 34),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _isLoading
+                              ? const Center(
+                                  key: ValueKey('loader'),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(24.0),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                )
+                              : (_fullContent.isEmpty
+                                  ? const Text(
+                                      'Full article not available.',
+                                      key: ValueKey('empty'),
+                                      style: TextStyle(
+                                          fontSize: 18, color: Colors.grey),
+                                    )
+                                  : _ArticleBody(
+                                      fontSize: _fontSize,
+                                      publishedAt:
+                                          widget.article['publishedAt'],
+                                      paragraphs: _paragraphs(),
+                                    )),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          // Thin reading progress indicator just below status bar / app bar
+          Positioned(
+            top: MediaQuery.of(context).padding.top + kToolbarHeight - 2,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(
+              value:
+                  _scrollProgress == 0 && _isLoading ? null : _scrollProgress,
+              minHeight: 3,
+              backgroundColor: Colors.black26,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.yellow),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.red,
@@ -228,18 +366,88 @@ class _ArticleScreenState extends State<ArticleScreen> {
         unselectedItemColor: Colors.white70,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.video_library), label: 'Videos'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.video_library), label: 'Videos'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
         ],
       ),
     );
   }
+}
 
-  String _formatDate(String dateString) {
+// Extracted body widget for readability & separation of concerns.
+class _ArticleBody extends StatelessWidget {
+  final List<String> paragraphs;
+  final String? publishedAt;
+  final double fontSize;
+  const _ArticleBody(
+      {required this.paragraphs,
+      required this.publishedAt,
+      required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateText =
+        (publishedAt != null) ? _formatDateStatic(publishedAt!) : '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (dateText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Text(
+              'Published: $dateText',
+              style: const TextStyle(
+                  fontSize: 14, color: Colors.red, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ...paragraphs.map(
+          (p) => Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: SelectableText(
+              p,
+              textAlign: TextAlign.justify,
+              style: TextStyle(
+                fontSize: fontSize,
+                height: 1.65,
+                letterSpacing: 0.15,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static String _formatDateStatic(String dateString) {
     final date = DateTime.tryParse(dateString);
     if (date != null) {
       return '${date.day}/${date.month}/${date.year}';
     }
     return '';
+  }
+}
+
+class _FontSizeButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _FontSizeButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F1F1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(icon, size: 20, color: Colors.red),
+      ),
+    );
   }
 }
