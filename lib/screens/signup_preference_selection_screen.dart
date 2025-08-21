@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/user_data_service.dart';
 
 class SignupPreferenceScreen extends StatefulWidget {
@@ -12,14 +13,22 @@ class SignupPreferenceScreen extends StatefulWidget {
 }
 
 class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
-  // Updated categories
+  // Categories (unchanged)
   final Map<String, List<String>> categories = {
     "Local": ["Top", "Business", "Sports", "Entertainment", "Technology"],
-    "Foreign": ["Top", "Sports", "Business", "Technology", "Politics", "Entertainment"],
+    "Foreign": [
+      "Top",
+      "Sports",
+      "Business",
+      "Technology",
+      "Politics",
+      "Entertainment"
+    ],
   };
 
   Set<String> selectedPreferences = {};
 
+  // Save preferences locally
   void _savePreferences() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('userPreferences', selectedPreferences.toList());
@@ -37,11 +46,37 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
     _savePreferences();
   }
 
+  // Continue button → save prefs + create recommendations in DB
   void _onContinue() async {
     final email = FirebaseAuth.instance.currentUser?.email;
     if (email != null) {
+      final firestore = FirebaseFirestore.instance;
+      final docId = email.replaceAll('.', ',');
+
+      // 1. Save preferences into DB
       await UserDataService.setPreferences(email, selectedPreferences.toList());
-      // Navigate to home or next screen
+
+      // 2. Calculate recommendations based only on selected prefs
+      final prefs = selectedPreferences.toList();
+      final int count = prefs.length;
+      final double percentage = count > 0 ? (100 / count) : 0;
+
+      final Map<String, Map<String, dynamic>> recommendations = {
+        for (var pref in prefs)
+          pref: {
+            'count': 1,
+            'percentage': percentage,
+          }
+      };
+
+      // 3. Write recommendations under user doc
+      await firestore.collection('userdata').doc(docId).set({
+        'recommendations': recommendations,
+      }, SetOptions(merge: true));
+
+      print("✅ Initial recommendations saved for $email");
+
+      // 4. Navigate to Home
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -52,7 +87,7 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F0), // Soft white with a reddish tint
+      backgroundColor: const Color(0xFFFFF0F0), // Soft reddish white background
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -78,6 +113,8 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
+
+              // Category blocks
               ...categories.entries.map((entry) {
                 final mainCat = entry.key;
                 final subs = entry.value;
@@ -129,13 +166,12 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
                   ],
                 );
               }),
+
               const SizedBox(height: 26),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: selectedPreferences.isNotEmpty
-                      ? _onContinue
-                      : null,
+                  onPressed: selectedPreferences.isNotEmpty ? _onContinue : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
@@ -144,7 +180,8 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     textStyle: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   child: const Text('Continue'),

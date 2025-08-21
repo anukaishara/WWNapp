@@ -6,6 +6,9 @@ import '../services/facebook_auth_service.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
 
+// ADDED
+import '../services/recommendation_service.dart';
+
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -74,6 +77,12 @@ class _SignInScreenState extends State<SignInScreen> {
         email: email,
         password: password,
       );
+
+      // ADDED 2 LINES
+      print("✅ Login successful for $email");
+      RecommendationService.updateUserRecommendations(email);
+
+
 
       if (!mounted) return;
       Navigator.pushReplacement(
