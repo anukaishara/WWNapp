@@ -27,11 +27,16 @@ class _ArticleScreenState extends State<ArticleScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final articleId = widget.article['docId'];
+      // Use a fallback for docId if it's missing
+      final articleId = widget.article['docId'] ?? widget.article['url'];
       final mainCategory = widget.article['mainCategory'];
       final subCategory = widget.article['subCategory'];
+      debugPrint('ArticleScreen opened with: docId=$articleId, mainCategory=$mainCategory, subCategory=$subCategory');
       if (articleId != null && mainCategory != null && subCategory != null) {
-        context.read<HistoryProvider>().addToHistory(widget.article);
+        // Ensure the article map has a docId for history
+        final articleForHistory = Map<String, dynamic>.from(widget.article);
+        articleForHistory['docId'] = articleId;
+        context.read<HistoryProvider>().addToHistory(articleForHistory);
       }
     });
     _fetchFullContent();
@@ -100,6 +105,72 @@ class _ArticleScreenState extends State<ArticleScreen> {
     setState(() {
       _fontSize = (_fontSize + delta).clamp(14, 26);
     });
+  }
+
+  Future<void> _handleBookmarkTap() async {
+    final bookmarkProvider = context.read<BookmarkProvider>();
+    final currentlyBookmarked = bookmarkProvider.isBookmarked(widget.article);
+
+    // pick an id that UserDataService can use (fallbacks)
+    final articleId =
+        widget.article['docId'] ?? widget.article['id'] ?? widget.article['url'];
+
+    // debug: log article and id
+    debugPrint('[_handleBookmarkTap] article: ${widget.article}');
+    debugPrint('[_handleBookmarkTap] resolved articleId: $articleId');
+    debugPrint('[_handleBookmarkTap] currentlyBookmarked: $currentlyBookmarked');
+
+    if (articleId == null ||
+        (articleId is String && articleId.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot bookmark this article (missing id).')),
+      );
+      return;
+    }
+
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to bookmark articles.')),
+      );
+      return;
+    }
+
+    final mainCategory = widget.article['mainCategory'] ?? 'Unknown';
+    final subCategory = widget.article['subCategory'];
+    debugPrint('mainCategory: $mainCategory, subCategory: $subCategory');
+
+    try {
+      if (!currentlyBookmarked) {
+        // remote add first
+        await UserDataService.addBookmark(email, articleId, mainCategory, subCategory);
+        // only update provider when remote succeeded
+        bookmarkProvider.toggleBookmark(widget.article);
+
+        // if you implemented _updateBookmarkCount(...) call it here:
+        // await _updateBookmarkCount(true);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Article bookmarked')),
+        );
+      } else {
+        // remote remove first
+        debugPrint('Removing bookmark: email=$email, articleId=$articleId, mainCategory=$mainCategory, subCategory=$subCategory');
+        await UserDataService.removeBookmark(email, articleId, mainCategory, subCategory);
+        bookmarkProvider.toggleBookmark(widget.article);
+
+        // await _updateBookmarkCount(false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bookmark removed')),
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[_handleBookmarkTap] error: $e\n$st');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update bookmark. Try again.')),
+      );
+    }
   }
 
   @override
@@ -210,66 +281,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
                               tooltip: isBookmarked
                                   ? 'Remove Bookmark'
                                   : 'Add Bookmark',
-                              onPressed: () async {
-                                final email =
-                                    FirebaseAuth.instance.currentUser?.email;
-                                final articleId = widget.article['docId'];
-                                final mainCategory =
-                                    widget.article['mainCategory'];
-                                final subCategory =
-                                    widget.article['subCategory'];
-
-                                if (email == null ||
-                                    articleId == null ||
-                                    mainCategory == null ||
-                                    subCategory == null) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'Cannot bookmark this article.')),
-                                    );
-                                  }
-                                  return;
-                                }
-
-                                final wasBookmarked = bookmarkProvider
-                                    .isBookmarked(widget.article);
-                                // Optimistic toggle
-                                await bookmarkProvider
-                                    .toggleBookmark(widget.article);
-                                try {
-                                  if (wasBookmarked) {
-                                    await UserDataService.removeBookmark(
-                                        email, articleId, mainCategory);
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(const SnackBar(
-                                              content:
-                                                  Text('Bookmark removed')));
-                                    }
-                                  } else {
-                                    await UserDataService.addBookmark(email,
-                                        articleId, mainCategory, subCategory);
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(const SnackBar(
-                                              content:
-                                                  Text('Article bookmarked')));
-                                    }
-                                  }
-                                } catch (e) {
-                                  // Revert optimistic toggle on failure
-                                  await bookmarkProvider
-                                      .toggleBookmark(widget.article);
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text('Bookmark failed: $e')),
-                                    );
-                                  }
-                                }
-                              },
+                              onPressed: _handleBookmarkTap,
                             ),
                           ),
                         ),

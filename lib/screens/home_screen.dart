@@ -339,7 +339,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   MaterialPageRoute(
                       builder: (_) => ArticleScreen(
-                            article: newsArticles.first,
+                            article: {
+                              ...newsArticles.first,
+                              'mainCategory':
+                                  newsArticles.first['mainCategory'] ?? 'Foreign',
+                              'subCategory':
+                                  newsArticles.first['subCategory'] ?? 'Top',
+                            },
                           )),
                 ),
               ),
@@ -371,9 +377,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => ArticleScreen(article: article)),
-                  ),
-                );
+                        builder: (_) => ArticleScreen(
+                              article: {
+                                ...article,
+                                'mainCategory':
+                                    article['mainCategory'] ?? 'Foreign',
+                                'subCategory': article['subCategory'] ??
+                                    'Top', // or another default
+                              },
+                            )),
+                ));
               },
             ),
           ),

@@ -114,32 +114,41 @@ class ApiService {
   ]);
 
   /// Fetch articles from all APIs, deduplicate, show instantly, save to Firestore in background
-  static Future<List<Map<String, dynamic>>> fetchAndDisplayArticles({
-    String query = 'news',
-    String? mainCategory,
-    String? subCategory,
-  }) async {
-    final articles = await aggregator.fetchAllArticles(query: query);
+  /// Fetch articles from all APIs, deduplicate, show instantly, save to Firestore in background
+static Future<List<Map<String, dynamic>>> fetchAndDisplayArticles({
+  String query = 'news',
+  String? mainCategory,
+  String? subCategory,
+}) async {
+  final articles = await aggregator.fetchAllArticles(query: query);
 
-    // Remove duplicates by URL before returning to UI
-    final uniqueArticles = <String, Map<String, dynamic>>{};
-    for (final article in articles) {
-      if (article['url'] != null && !uniqueArticles.containsKey(article['url'])) {
-        uniqueArticles[article['url']] = article;
-      }
+  // Remove duplicates by URL before returning to UI
+  final uniqueArticles = <String, Map<String, dynamic>>{};
+  for (final article in articles) {
+    if (article['url'] != null && !uniqueArticles.containsKey(article['url'])) {
+      uniqueArticles[article['url']] = article;
     }
-
-    // Save to Firestore in background (do not await)
-    saveArticlesToFirestore(
-      uniqueArticles.values.toList(),
-      query,
-      mainCategory: mainCategory,
-      subCategory: subCategory,
-    );
-
-    // Return unique articles instantly for UI display
-    return uniqueArticles.values.toList();
   }
+
+  // ✅ FIX: Add mainCategory and subCategory to articles BEFORE returning to UI
+  final articlesWithCategories = uniqueArticles.values.map((article) => {
+    ...article,
+    'mainCategory': mainCategory,     // "Foreign"
+    'subCategory': subCategory,       // "Sports", "Business", etc.
+  }).toList();
+
+  // Save to Firestore in background (do not await)
+  saveArticlesToFirestore(
+    articlesWithCategories,  // ✅ Use articles with categories
+    query,
+    mainCategory: mainCategory,
+    subCategory: subCategory,
+  );
+
+  // ✅ Return articles with proper category fields for UI
+  return articlesWithCategories;
+}
+
 
   /// Save articles to Firestore, avoid duplicates by URL
   static Future<void> saveArticlesToFirestore(
