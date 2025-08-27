@@ -10,6 +10,9 @@ import 'package:flutter/services.dart';
 import '../services/scraping.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import '../services/search_service.dart';
+
+
 // cached_network_image no longer used after simplification
 
 class HomeScreen extends StatefulWidget {
@@ -63,7 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (widget.initialMainCategory == 'For you') {
       _selectedMainCategory = 'For you';
     }
+    
   }
+
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
     setState(() => isLoading = true);
@@ -76,6 +81,14 @@ class _HomeScreenState extends State<HomeScreen> {
           cachedNews[category] = scraped;
         });
         _debugPrintFirstImages();
+        if (scraped.isNotEmpty) {
+        try {
+          SearchService.indexArticles(scraped);
+        } catch (e) {
+          print('❌ Failed to index cached articles: $e');
+        }
+      }
+    
       }
       // Firestore saving happens inside scrapeLocalCategory; we can optionally refresh later
       setState(() => isLoading = false);
@@ -84,8 +97,19 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       if (_selectedMainCategory == 'Foreign') {
         if (!forceRefresh && cachedNews.containsKey(category)) {
-          newsArticles = cachedNews[category]!;
+          final cached = cachedNews[category]!;
+          newsArticles = cached;
+        
+        // 🆕 ADD THIS: Index cached articles if needed
+        if (cached.isNotEmpty) {
+          try {
+            SearchService.indexArticles(cached);
+          } catch (e) {
+            print('❌ Failed to index cached articles: $e');
+          }
         }
+        }
+        
         final query = categoryToQuery[category] ?? 'news';
         final fresh = await ApiService.fetchAndDisplayArticles(
             query: query,

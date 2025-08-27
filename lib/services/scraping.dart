@@ -2,6 +2,8 @@ import 'package:http/http.dart' as http;
 import 'package:rss_dart/dart_rss.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'search_service.dart';
+
 
 final Map<String, String> localCategoryUrls = {
   "Top": "https://www.adaderana.lk/hot-news/",
@@ -117,6 +119,14 @@ Future<List<Map<String, dynamic>>> scrapeLocalCategory(String category,
         mainCategory: "Local", subCategory: category);
   }
 
+ if (scrapedArticles.isNotEmpty) {
+    try {
+      SearchService.indexArticles(scrapedArticles);
+      print('✅ Local articles indexed in Algolia: ${scrapedArticles.length}');
+    } catch (e) {
+      print('❌ Failed to index local articles in Algolia: $e');
+    }
+  }
   // Return scraped articles immediately (no docId yet)
   return scrapedArticles;
 }

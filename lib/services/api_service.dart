@@ -1,6 +1,8 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'search_service.dart';
+import 'advanced_search_service.dart';
 
 /// Abstract provider for any news API
 abstract class NewsApiProvider {
@@ -144,6 +146,16 @@ static Future<List<Map<String, dynamic>>> fetchAndDisplayArticles({
     mainCategory: mainCategory,
     subCategory: subCategory,
   );
+
+   try {
+  SearchService.indexArticles(articlesWithCategories);
+  // Also upload to Algolia for search
+  await AdvancedSearchService.indexArticlesBatch(articlesWithCategories);
+  print('✅ Articles indexed in both services');
+} catch (e) {
+  print('❌ Failed to index articles: $e');
+}
+
 
   // ✅ Return articles with proper category fields for UI
   return articlesWithCategories;
