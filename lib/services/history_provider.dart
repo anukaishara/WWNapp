@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/user_data_service.dart';
 import 'dart:convert';
+import '../services/recommendation_service.dart';
+
 
 class HistoryProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _historyArticles = [];
@@ -77,6 +79,11 @@ class HistoryProvider extends ChangeNotifier {
     // Add to Firebase - this will increment counts for every visit
     await UserDataService.addHistory(email, articleId, mainCategory, subCategory);
     await _syncCountsToFirebase();
+    // ******
+    if (email != null) {
+      await RecommendationService.updateUserRecommendations(email);
+    }
+
     notifyListeners();
   }
 
@@ -107,6 +114,11 @@ class HistoryProvider extends ChangeNotifier {
     
     await UserDataService.removeHistory(email, articleId, mainCategory);
     await _syncCountsToFirebase();
+    // *****
+    if (email != null) {
+      await RecommendationService.updateUserRecommendations(email);
+    }
+
     notifyListeners();
   }
 
@@ -134,6 +146,11 @@ class HistoryProvider extends ChangeNotifier {
     }
     
     await _syncCountsToFirebase();
+    // *****
+    if (email != null) {
+      await RecommendationService.updateUserRecommendations(email);
+    }
+
     notifyListeners();
   }
 
@@ -150,6 +167,12 @@ class HistoryProvider extends ChangeNotifier {
     }
 
     await _syncCountsToFirebase();
+    // ******
+    if (email != null) {
+      await RecommendationService.updateUserRecommendations(email);
+    }
+
+
     notifyListeners();
   }
 

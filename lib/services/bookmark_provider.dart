@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/user_data_service.dart';
 import 'dart:convert';
+import '../services/recommendation_service.dart';
+
 
 class BookmarkProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _bookmarkedArticles = [];
@@ -67,6 +69,11 @@ class BookmarkProvider extends ChangeNotifier {
     await prefs.setStringList('bookmarked_articles', updatedData);
     
     await _syncCountsToFirebase(); // Sync counts after change
+    // ******
+    if (email != null) {
+      await RecommendationService.updateUserRecommendations(email);
+    }
+
     notifyListeners();
   }
 
@@ -97,6 +104,14 @@ class BookmarkProvider extends ChangeNotifier {
     await prefs.setStringList('bookmarked_articles', updatedData);
     
     await _syncCountsToFirebase(); // Sync counts after change
+    // *******
+    if (email != null) {
+      await RecommendationService.updateUserRecommendations(email);
+    }
+
+
+
+
     notifyListeners();
   }
 
@@ -114,6 +129,16 @@ class BookmarkProvider extends ChangeNotifier {
     }
     
     await _syncCountsToFirebase(); // Sync counts after clearing
+    
+    // *****
+    if (email != null) {
+      await RecommendationService.updateUserRecommendations(email);
+    }
+
+
+
+
+
     notifyListeners();
   }
 
