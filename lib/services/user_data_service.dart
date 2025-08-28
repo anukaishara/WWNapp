@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'recommendation_service.dart';
+
 
 class UserDataService {
   static final _firestore = FirebaseFirestore.instance;
@@ -20,6 +22,12 @@ class UserDataService {
       'email': email,
       'preferences': preferences,
     }, SetOptions(merge: true));
+    // ****
+    //  Call recommendation algorithm to recalculate
+      await RecommendationService.updateUserRecommendations(email);
+
+
+
   }
 
   // Add bookmark and increment counters
@@ -59,7 +67,7 @@ class UserDataService {
       (rawCategoryCounts as Map).forEach((key, value) {
         categoryCounts[key.toString()] = value;
       });
-      final currentCategoryCount = (categoryCounts[mainCategory] ?? 0) as int;
+      final currentCategoryCount = (categoryCounts[mainCategory] ?? 0);
 
       final newCount = currentCount > 0 ? currentCount - 1 : 0;
       final newCategoryCount =
