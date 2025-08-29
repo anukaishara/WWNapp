@@ -6,6 +6,8 @@ import 'services/bookmark_provider.dart';
 import 'services/history_provider.dart'; 
 import 'firebase_options.dart';
 import 'screens/title_screen.dart';
+import 'services/search_service.dart';
+import "services/advanced_search_service.dart";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +15,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
+  await SearchService.initialize();
+    await AdvancedSearchService.initialize();
+
+  
+  
+
   runApp(
     MultiProvider(
       providers: [

@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../services/for_you_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/search_service.dart';
 
 // cached_network_image no longer used after simplification
 
@@ -72,7 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedMainCategory = 'For you';
       _fetchNews('Top');
     }
+    
   }
+
 
   Future<void> _fetchNews(String category, {bool forceRefresh = false}) async {
     setState(() => isLoading = true);
@@ -85,6 +88,14 @@ class _HomeScreenState extends State<HomeScreen> {
           cachedNews[category] = scraped;
         });
         _debugPrintFirstImages();
+        if (scraped.isNotEmpty) {
+        try {
+          SearchService.indexArticles(scraped);
+        } catch (e) {
+          print('❌ Failed to index cached articles: $e');
+        }
+      }
+    
       }
       setState(() => isLoading = false);
       return;
@@ -92,8 +103,19 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       if (_selectedMainCategory == 'Foreign') {
         if (!forceRefresh && cachedNews.containsKey(category)) {
-          newsArticles = cachedNews[category]!;
+          final cached = cachedNews[category]!;
+          newsArticles = cached;
+        
+        // 🆕 ADD THIS: Index cached articles if needed
+        if (cached.isNotEmpty) {
+          try {
+            SearchService.indexArticles(cached);
+          } catch (e) {
+            print('❌ Failed to index cached articles: $e');
+          }
         }
+        }
+        
         final query = categoryToQuery[category] ?? 'news';
         final fresh = await ApiService.fetchAndDisplayArticles(
             query: query,
