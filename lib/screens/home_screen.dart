@@ -10,8 +10,9 @@ import 'package:flutter/services.dart';
 import '../services/scraping.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import '../services/for_you_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/search_service.dart';
-
 
 // cached_network_image no longer used after simplification
 
@@ -65,6 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _fetchNews(_selectedSubCategory!);
     } else if (widget.initialMainCategory == 'For you') {
       _selectedMainCategory = 'For you';
+      // Load personalized feed immediately
+      _fetchNews('Top');
+    } else {
+      // Default launch: show personalized feed
+      _selectedMainCategory = 'For you';
+      _fetchNews('Top');
     }
     
   }
@@ -90,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     
       }
-      // Firestore saving happens inside scrapeLocalCategory; we can optionally refresh later
       setState(() => isLoading = false);
       return;
     }
@@ -117,15 +123,21 @@ class _HomeScreenState extends State<HomeScreen> {
             subCategory: category);
         if (mounted) {
           setState(() {
-            // Show fresh API results immediately (they contain image URLs)
             newsArticles = fresh;
             cachedNews[category] = fresh;
           });
           _debugPrintFirstImages();
         }
-        // (Optional) Later we could reconcile with Firestore if needed
       } else if (_selectedMainCategory == 'For you') {
-        setState(() => newsArticles = []);
+        final userEmail = await _getUserEmail();
+        final recommended = await ForYouService.fetchRecommendedNews(
+          userEmail,
+          totalArticles: 30,
+        );
+        if (mounted) {
+          setState(() => newsArticles = recommended);
+          _debugPrintFirstImages();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -144,6 +156,13 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     }
+  }
+
+  // Returns the current user's email using FirebaseAuth
+  Future<String> _getUserEmail() async {
+    // Make sure you have firebase_auth in your pubspec.yaml
+    // and Firebase is initialized in your app.
+    return FirebaseAuth.instance.currentUser?.email ?? '';
   }
 
   // Helper to print first few image URLs for debugging
@@ -265,6 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _selectedSubCategory = null;
                       if (mainCat == 'For you') {
                         newsArticles = [];
+                        _fetchNews('Top');
                       } else {
                         final first = mainToSubCategories[mainCat]!.first;
                         _selectedSubCategory = first;
@@ -366,7 +386,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             article: {
                               ...newsArticles.first,
                               'mainCategory':
-                                  newsArticles.first['mainCategory'] ?? 'Foreign',
+                                  newsArticles.first['mainCategory'] ??
+                                      'Foreign',
                               'subCategory':
                                   newsArticles.first['subCategory'] ?? 'Top',
                             },
@@ -386,31 +407,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 final article = newsArticles[i + 1];
                 final bookmarked = bookmarkProvider.isBookmarked(article);
                 return _ArticleTile(
-                  article: article,
-                  bookmarked: bookmarked,
-                  onBookmark: () async {
-                    final was = bookmarkProvider.isBookmarked(article);
-                    await bookmarkProvider.toggleBookmark(article);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(
-                              was ? 'Bookmark removed' : 'Article bookmarked'),
-                          duration: const Duration(seconds: 1)));
-                    }
-                  },
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => ArticleScreen(
-                              article: {
-                                ...article,
-                                'mainCategory':
-                                    article['mainCategory'] ?? 'Foreign',
-                                'subCategory': article['subCategory'] ??
-                                    'Top', // or another default
-                              },
-                            )),
-                ));
+                    article: article,
+                    bookmarked: bookmarked,
+                    onBookmark: () async {
+                      final was = bookmarkProvider.isBookmarked(article);
+                      await bookmarkProvider.toggleBookmark(article);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(was
+                                ? 'Bookmark removed'
+                                : 'Article bookmarked'),
+                            duration: const Duration(seconds: 1)));
+                      }
+                    },
+                    onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ArticleScreen(
+                                    article: {
+                                      ...article,
+                                      'mainCategory':
+                                          article['mainCategory'] ?? 'Foreign',
+                                      'subCategory': article['subCategory'] ??
+                                          'Top', // or another default
+                                    },
+                                  )),
+                        ));
               },
             ),
           ),
