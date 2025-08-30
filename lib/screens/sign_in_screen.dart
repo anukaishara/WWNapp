@@ -78,8 +78,7 @@ class _SignInScreenState extends State<SignInScreen> {
         password: password,
       );
 
-      // ADDED 2 LINES
-      print("✅ Login successful for $email");
+      // ADDED 2 LINES 
       RecommendationService.updateUserRecommendations(email);
 
 

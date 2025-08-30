@@ -265,10 +265,10 @@ static Future<void> indexArticlesBatch(
       
       // Truncate content if too large (keep under 8KB to allow for other fields)
       if (content.length > 6000) {
-        content = content.substring(0, 6000) + '...';
+        content = '${content.substring(0, 6000)}...';
       }
       if (description.length > 500) {
-        description = description.substring(0, 500) + '...';
+        description = '${description.substring(0, 500)}...';
       }
       
       return {

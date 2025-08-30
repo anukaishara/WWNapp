@@ -299,9 +299,9 @@ class _ArticleScreenState extends State<ArticleScreen> {
                       children: [
                         const Icon(Icons.text_fields, color: Colors.red),
                         const SizedBox(width: 12),
-                        Text('Font size',
+                        const Text('Font size',
                             style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
+                                TextStyle(fontWeight: FontWeight.w600)),
                         const Spacer(),
                         _FontSizeButton(
                             icon: Icons.remove,

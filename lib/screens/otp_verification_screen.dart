@@ -200,10 +200,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       const SizedBox(height: 20),
                       TextButton(
                         onPressed: _isSending ? null : _sendOtp,
-                        child: Text(
+                        child: const Text(
                           'Resend OTP',
                           style: TextStyle(
-                            color: const Color.fromARGB(255, 187, 51, 41),
+                            color: Color.fromARGB(255, 187, 51, 41),
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                             decoration: TextDecoration.underline,

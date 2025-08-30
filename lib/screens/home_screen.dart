@@ -651,10 +651,12 @@ class _ArticleTile extends StatelessWidget {
   Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore(
       {String? mainCategory, String? subCategory}) async {
     Query query = FirebaseFirestore.instance.collection('articles');
-    if (mainCategory != null)
+    if (mainCategory != null) {
       query = query.where('mainCategory', isEqualTo: mainCategory);
-    if (subCategory != null)
+    }
+    if (subCategory != null) {
       query = query.where('subCategory', isEqualTo: subCategory);
+    }
     final snapshot = await query.get();
     return snapshot.docs
         .map((doc) => {...doc.data() as Map<String, dynamic>, 'docId': doc.id})

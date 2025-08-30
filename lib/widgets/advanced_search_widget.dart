@@ -8,10 +8,10 @@ class AdvancedSearchWidget extends StatefulWidget {
   final String? initialQuery;
   
   const AdvancedSearchWidget({
-    Key? key,
+    super.key,
     required this.onArticleSelected,
     this.initialQuery,
-  }) : super(key: key);
+  });
   
   @override
   _AdvancedSearchWidgetState createState() => _AdvancedSearchWidgetState();

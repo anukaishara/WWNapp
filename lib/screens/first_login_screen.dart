@@ -81,10 +81,10 @@ class _FirstLoginScreenState extends State<FirstLoginScreen> {
                           ? const Icon(Icons.person, size: 54, color: Colors.red)
                           : null,
                     ),
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 18,
                       backgroundColor: Colors.red,
-                      child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                      child: Icon(Icons.camera_alt, size: 20, color: Colors.white),
                     ),
                   ],
                 ),

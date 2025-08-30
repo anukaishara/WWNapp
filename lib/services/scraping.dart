@@ -256,8 +256,9 @@ Future<String> fetchFullArticleContent(String url,
 String? _normalizeAdaDeranaImage(String? raw) {
   if (raw == null || raw.trim().isEmpty) return null;
   String url = raw.trim();
-  if (url.startsWith('data:'))
+  if (url.startsWith('data:')) {
     return null; // ignore data URIs (often tracking pixels)
+  }
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   if (url.startsWith('//')) return 'https:$url';
   if (url.startsWith('/')) return 'https://www.adaderana.lk$url';

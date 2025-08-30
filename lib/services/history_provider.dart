@@ -80,10 +80,8 @@ class HistoryProvider extends ChangeNotifier {
     await UserDataService.addHistory(email, articleId, mainCategory, subCategory);
     await _syncCountsToFirebase();
     // ******
-    if (email != null) {
-      await RecommendationService.updateUserRecommendations(email);
-    }
-
+    await RecommendationService.updateUserRecommendations(email);
+  
     notifyListeners();
   }
 
@@ -115,10 +113,8 @@ class HistoryProvider extends ChangeNotifier {
     await UserDataService.removeHistory(email, articleId, mainCategory);
     await _syncCountsToFirebase();
     // *****
-    if (email != null) {
-      await RecommendationService.updateUserRecommendations(email);
-    }
-
+    await RecommendationService.updateUserRecommendations(email);
+  
     notifyListeners();
   }
 
@@ -147,10 +143,8 @@ class HistoryProvider extends ChangeNotifier {
     
     await _syncCountsToFirebase();
     // *****
-    if (email != null) {
-      await RecommendationService.updateUserRecommendations(email);
-    }
-
+    await RecommendationService.updateUserRecommendations(email);
+  
     notifyListeners();
   }
 

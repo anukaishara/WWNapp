@@ -54,8 +54,7 @@ class ForYouService {
       allocations[sorted[i]] = (allocations[sorted[i]] ?? 0) + 1;
     }
     // ignore: avoid_print
-    print('[ForYouService] Allocations: ' +
-        allocations.entries.map((e) => '${e.key}=${e.value}').join(', '));
+    print('[ForYouService] Allocations: ${allocations.entries.map((e) => '${e.key}=${e.value}').join(', ')}');
 
     final seenIds = <String>{};
     final seenUrls = <String>{};
@@ -75,7 +74,7 @@ class ForYouService {
       );
       // ignore: avoid_print
       print(
-          '[ForYouService] Query ${mainCat}-${subCat} -> got ${articles.length} docs');
+          '[ForYouService] Query $mainCat-$subCat -> got ${articles.length} docs');
       var addedThisCategory = 0;
       for (final a in articles) {
         final id = (a['docId'] as String?) ?? '';
@@ -88,8 +87,9 @@ class ForYouService {
           if (url.isNotEmpty) seenUrls.add(url);
           addedThisCategory++;
         }
-        if (allArticles.length >= totalArticles || addedThisCategory >= count)
+        if (allArticles.length >= totalArticles || addedThisCategory >= count) {
           break;
+        }
       }
 
       // If Firestore has no/insufficient docs for this category, try to hydrate from source
@@ -97,7 +97,7 @@ class ForYouService {
         final needed = count - addedThisCategory;
         // ignore: avoid_print
         print(
-            '[ForYouService] Need $needed more for ${mainCat}-${subCat}; hydrating from source');
+            '[ForYouService] Need $needed more for $mainCat-$subCat; hydrating from source');
         List<Map<String, dynamic>> fresh = [];
         if (mainCat == 'Foreign') {
           final query = _foreignCategoryToQuery[subCat] ?? 'news';
@@ -121,8 +121,9 @@ class ForYouService {
             if (url.isNotEmpty) seenUrls.add(url);
             addedThisCategory++;
           }
-          if (allArticles.length >= totalArticles || addedThisCategory >= count)
+          if (allArticles.length >= totalArticles || addedThisCategory >= count) {
             break;
+          }
         }
       }
     }

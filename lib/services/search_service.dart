@@ -101,7 +101,7 @@ class SearchService {
         // Range query for "contains" functionality
         firestoreQuery = firestoreQuery
             .where(field, isGreaterThanOrEqualTo: query)
-            .where(field, isLessThan: query + '\uf8ff')
+            .where(field, isLessThan: '$query\uf8ff')
             .limit(20);
       }
 
@@ -140,7 +140,7 @@ class SearchService {
       // Search main categories
       final mainCategoryQuery = _firestore.collection('articles')
           .where('mainCategory', isGreaterThanOrEqualTo: query)
-          .where('mainCategory', isLessThan: query + '\uf8ff')
+          .where('mainCategory', isLessThan: '$query\uf8ff')
           .limit(15);
 
       final mainSnapshot = await mainCategoryQuery.get();
@@ -164,7 +164,7 @@ class SearchService {
       // Search sub categories
       final subCategoryQuery = _firestore.collection('articles')
           .where('subCategory', isGreaterThanOrEqualTo: query)
-          .where('subCategory', isLessThan: query + '\uf8ff')
+          .where('subCategory', isLessThan: '$query\uf8ff')
           .limit(15);
 
       final subSnapshot = await subCategoryQuery.get();
