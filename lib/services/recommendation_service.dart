@@ -368,7 +368,6 @@ class RecommendationService {
         }
       });
     } catch (e) {
-      print(' Error reading bookmark counts: $e');
     }
 
     // 🔹 History (weight = 1)
@@ -386,11 +385,9 @@ class RecommendationService {
         }
       });
     } catch (e) {
-      print(' Error reading history counts: $e');
     }
 
     if (totalCount == 0) {
-      print(' No data found to calculate recommendations.');
       return;
     }
 
@@ -415,9 +412,9 @@ class RecommendationService {
       (recommendationData[lastCategory]!['percentage'] + (100 - currentSum)).toStringAsFixed(2),
     );
 
-    print('Final Recommendation data for $firestoreDocId:');
+
     recommendationData.forEach((category, data) {
-      print('  $category: count=${data['count']}, percentage=${data['percentage']}%');
+
     });
 
     // 🔥 Overwrite recommendations section ONLY (delete then set)
@@ -430,9 +427,8 @@ class RecommendationService {
         'recommendations': recommendationData,
       });
 
-      print(' Successfully replaced recommendations in Firestore.');
+
     } catch (e) {
-      print(' Failed to store recommendation data: $e');
     }
   }
 }

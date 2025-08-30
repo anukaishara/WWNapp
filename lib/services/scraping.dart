@@ -226,9 +226,7 @@ Future<void> saveLocalArticlesToFirestore(
 
   try {
     await batch.commit();
-    print("✅ Local articles saved to Firestore: $savedCount");
   } catch (e) {
-    print("❌ Error saving local articles: $e");
   }
 }
 
