@@ -69,11 +69,9 @@ class SearchService {
         return 0;
       });
 
-      print('✅ Found ${results.length} search results for "$query"');
       return results.take(50).toList(); // Limit to 50 results
       
     } catch (e) {
-      print('❌ Search error: $e');
       return [];
     }
   }
@@ -121,7 +119,6 @@ class SearchService {
         }
       }
     } catch (e) {
-      print('❌ Error searching by $field: $e');
     }
   }
 
@@ -182,7 +179,6 @@ class SearchService {
         }
       }
     } catch (e) {
-      print('❌ Error searching by category: $e');
     }
   }
 
@@ -205,7 +201,6 @@ class SearchService {
         await _searchByField('description', word, results, uniqueIds);
       }
     } catch (e) {
-      print('❌ Error in word search: $e');
     }
   }
 
@@ -267,7 +262,6 @@ class SearchService {
       return suggestions.take(8).toList();
       
     } catch (e) {
-      print('❌ Suggestions error: $e');
       return [];
     }
   }
@@ -304,9 +298,7 @@ static Future<void> indexArticles(List<Map<String, dynamic>> articles) async {
       print('⚠️ Algolia indexing failed (continuing with Firestore): $e');
     }
     
-    print('📝 Indexed ${articles.length} articles for search');
   } catch (e) {
-    print('❌ Indexing error: $e');
   }
 }
 
@@ -377,9 +369,7 @@ static Future<void> indexArticles(List<Map<String, dynamic>> articles) async {
   static Future<void> clearSearchCache() async {
     try {
       // Implement cache clearing logic if you add caching
-      print('🧹 Search cache cleared');
     } catch (e) {
-      print('❌ Error clearing search cache: $e');
     }
   }
 
@@ -415,7 +405,6 @@ static Future<Map<String, dynamic>> getSearchStats() async {
     
     return stats;
   } catch (e) {
-    print('❌ Error getting search stats: $e');
     return {};
   }
 }

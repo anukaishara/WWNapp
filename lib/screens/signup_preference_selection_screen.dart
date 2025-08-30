@@ -74,7 +74,6 @@ class _SignupPreferenceScreenState extends State<SignupPreferenceScreen> {
         'recommendations': recommendations,
       }, SetOptions(merge: true));
 
-      print("✅ Initial recommendations saved for $email");
 
       // 4. Navigate to Home
       Navigator.pushReplacement(

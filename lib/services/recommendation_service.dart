@@ -331,11 +331,10 @@ class RecommendationService {
     final firestore = FirebaseFirestore.instance;
     String firestoreDocId = userEmail.replaceAll('.', ',');
 
-    print(' Reading user document for $firestoreDocId...');
 
     final userDoc = await firestore.collection('userdata').doc(firestoreDocId).get();
     if (!userDoc.exists) {
-      print(' User document not found for $firestoreDocId.');
+
       return;
     }
 
@@ -347,7 +346,7 @@ class RecommendationService {
     try {
       preferences = List<String>.from(userDoc.get('preferences') ?? []);
     } catch (e) {
-      print(' No preferences found or error reading preferences: $e');
+
     }
     for (var pref in preferences) {
       categoryCount[pref] = (categoryCount[pref] ?? 0) + 2;

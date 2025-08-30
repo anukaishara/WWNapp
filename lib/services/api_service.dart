@@ -190,7 +190,7 @@ static Future<List<Map<String, dynamic>>> fetchAndDisplayArticles({
     }
 
     await batch.commit();
-    print("✅ Articles saved to Firestore.");
+
   }
 
   static Future<List<Map<String, dynamic>>> fetchArticlesFromFirestore({
