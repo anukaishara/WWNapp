@@ -45,9 +45,7 @@ class AdvancedSearchService {
       // Load cached data
       await _loadCachedData();
       
-      print('🔍 AdvancedSearchService initialized successfully');
     } catch (e) {
-      print('❌ Failed to initialize AdvancedSearchService: $e');
       await _initializeOfflineMode();
     }
   }
@@ -69,7 +67,6 @@ class AdvancedSearchService {
     // Check cache first
     final cached = _searchCache[cacheKey];
     if (cached != null && !cached.isExpired) {
-      print('🎯 Cache hit for "$query"');
       return cached.results;
     }
     
@@ -153,11 +150,10 @@ class AdvancedSearchService {
       // Track analytics
       await _trackSearchAnalytics(query, results.totalHits, userToken);
       
-      print('✅ Found ${results.totalHits} results in ${results.processingTime}ms for "$query"');
+
       return results;
       
     } catch (e) {
-      print('❌ Algolia search error: $e');
       return await _searchOffline(query, filters);
     }
   }
@@ -240,7 +236,6 @@ class AdvancedSearchService {
       return uniqueSuggestions;
       
     } catch (e) {
-      print('❌ Suggestions error: $e');
       return await _getOfflineSuggestions(query);
     }
   }
@@ -287,7 +282,6 @@ static Future<void> indexArticlesBatch(
       };
     }).toList();
     
-    print('🔄 Uploading ${objectsToIndex.length} articles to Algolia...');
     
     const batchSize = 100;
     for (int i = 0; i < objectsToIndex.length; i += batchSize) {
@@ -312,13 +306,10 @@ static Future<void> indexArticlesBatch(
         batchWriteParams: batchWriteParams,
       );
       
-      print('📤 Batch ${(i ~/ batchSize) + 1}: ${batch.length} articles uploaded');
     }
     
-    print('✅ Successfully indexed ${articles.length} articles to Algolia');
     
   } catch (e) {
-    print('❌ Failed to index articles: $e');
     rethrow;
   }
 }
@@ -380,7 +371,6 @@ static Future<void> uploadTestData() async {
       
       return analytics;
     } catch (e) {
-      print('❌ Failed to get search analytics: $e');
       return {};
     }
   }
@@ -388,7 +378,6 @@ static Future<void> uploadTestData() async {
   /// Clear search cache
   static void clearCache() {
     _searchCache.clear();
-    print('🧹 Search cache cleared');
   }
   
   /// Dispose resources
@@ -408,7 +397,6 @@ static Future<void> uploadTestData() async {
     String query,
     Map<String, List<String>>? filters,
   ) async {
-    print('🔌 Performing offline search for "$query"');
     
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -447,7 +435,6 @@ static Future<void> uploadTestData() async {
       );
       
     } catch (e) {
-      print('❌ Offline search failed: $e');
       return SearchResults.empty(query);
     }
   }
@@ -528,7 +515,6 @@ static Future<void> uploadTestData() async {
       
       await prefs.setStringList('search_history', searchHistory);
     } catch (e) {
-      print('⚠️ Failed to track search analytics: $e');
     }
   }
   
@@ -536,17 +522,14 @@ static Future<void> uploadTestData() async {
     _subscriptions.add(
       Connectivity().onConnectivityChanged.listen((result) {
         _isOnline = result != ConnectivityResult.none;
-        print('📶 Connectivity changed: ${_isOnline ? 'Online' : 'Offline'}');
       }),
     );
   }
   
   static Future<void> _loadCachedData() async {
-    print('📚 Loading cached search data...');
   }
   
   static Future<void> _initializeOfflineMode() async {
-    print('🔌 Initializing offline search mode...');
     _isOnline = false;
   }
   

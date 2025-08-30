@@ -14,9 +14,7 @@ class SearchService {
     try {
       // Initialize any search-related services here
       _isInitialized = true;
-      print('🔍 SearchService initialized successfully');
     } catch (e) {
-      print('❌ SearchService initialization failed: $e');
     }
   }
 
@@ -25,7 +23,6 @@ class SearchService {
     if (query.trim().isEmpty) return [];
     
     try {
-      print('🔍 Searching for: "$query"');
       
       final lowercaseQuery = query.toLowerCase();
       final Set<String> uniqueArticleIds = {};
