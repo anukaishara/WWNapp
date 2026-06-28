@@ -13,23 +13,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Flutter
+      - name: Set up Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
           channel: stable
           cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK
+      - name: Install NDK required by Flutter
+        run: |
+          NDK_VERSION=$(flutter doctor -v 2>&1 | grep -oP '(?<=ndk;)\S+' | head -1)
+          NDK_VERSION=${NDK_VERSION:-27.0.12077973}
+          echo "Installing NDK $NDK_VERSION"
+          yes | sdkmanager "ndk;$NDK_VERSION"
+
+      - name: Build release APK
         run: flutter build apk --release
 
       - name: Upload APK
